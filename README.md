@@ -190,6 +190,20 @@ integration is linked, the template validates and is created on Northflank,
 and the run reaches the project/service creation step. Adding the card is the
 one manual, human action left; the deploy command itself is scripted below.
 
+**Two build problems found and fixed by building the image locally** — both
+would have failed or bloated the Northflank build identically:
+
+- `sentence-transformers` pulls `torch`, which on Linux defaults to the CUDA
+  build: ~2.5 GB of nvidia libraries for a service that only ever embeds on
+  CPU. The first image measured **6.39 GB**. `pyproject.toml` now pins torch
+  to the CPU wheel index on Linux (`tool.uv.sources` with a `sys_platform`
+  marker — note that it binds *direct* dependencies only, so torch is
+  declared explicitly even though it arrives transitively).
+- `UV_COMPILE_BYTECODE=1` fails the build outright: uv's bytecode compiler
+  hits its 60-second per-file limit on torch's generated test modules
+  (`common_methods_invocations.py`). Removed — it buys a little first-import
+  speed, which model loading dominates anyway.
+
 **Why Northflank.** AWS with Terraform would have consumed 2–3 hours of the
 budget on ECS/IAM/ALB plumbing. Northflank gives git-driven container deploys,
 a committed IaC template, and a project dashboard reviewers can be invited to.
