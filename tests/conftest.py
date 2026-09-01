@@ -1,4 +1,13 @@
+import asyncio
+import json
+
+from fastapi.testclient import TestClient
+
+from recipe_qa.app import create_app
+from recipe_qa.config import Settings
 from recipe_qa.models import Recipe
+from recipe_qa.pipeline import Pipeline
+from recipe_qa.retrieval import RecipeIndex
 
 
 class StubEmbedder:
@@ -14,6 +23,30 @@ class StubEmbedder:
         return self._vectors.get(text, [0.0, 0.0, 0.0])
 
 
+class MockLLM:
+    def __init__(self, responses=None, error: Exception | None = None):
+        self.responses = list(responses or [])
+        self.error = error
+        self.calls: list = []
+
+    async def complete(self, messages, **params):
+        self.calls.append((messages, params))
+        if self.error is not None:
+            raise self.error
+        return self.responses.pop(0)
+
+
+def llm_json(answer=None, citation_ids=(), refused=False, refusal_reason=None) -> str:
+    return json.dumps(
+        {
+            "answer": answer,
+            "citation_ids": list(citation_ids),
+            "refused": refused,
+            "refusal_reason": refusal_reason,
+        }
+    )
+
+
 def make_recipe(id_, title, text, time_minutes=None, diet_tags=(), ingredients=(), steps=()):
     return Recipe(
         id=id_,
@@ -25,3 +58,16 @@ def make_recipe(id_, title, text, time_minutes=None, diet_tags=(), ingredients=(
         diet_tags=list(diet_tags),
         text=text,
     )
+
+
+def build_client(
+    corpus: list[Recipe], llm: MockLLM | None = None, **settings_overrides
+) -> tuple[TestClient, MockLLM]:
+    """App with an injected pipeline: stub embedder, mocked LLM, tiny corpus."""
+    llm = llm or MockLLM()
+    settings = Settings(llm_api_key="test-key", **settings_overrides)
+    index = RecipeIndex(corpus, StubEmbedder(), settings)
+    asyncio.run(index.build())
+    app = create_app()
+    app.state.pipeline = Pipeline(index=index, llm=llm, settings=settings)
+    return TestClient(app), llm

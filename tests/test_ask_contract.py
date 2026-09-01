@@ -5,16 +5,9 @@ here deterministically; the real model is only ever exercised by the eval
 harness.
 """
 
-import asyncio
-import json
-
-from conftest import StubEmbedder, make_recipe
+from conftest import MockLLM, llm_json, make_recipe
+from conftest import build_client as build_client_base
 from fastapi.testclient import TestClient
-
-from recipe_qa.app import create_app
-from recipe_qa.config import Settings
-from recipe_qa.pipeline import Pipeline
-from recipe_qa.retrieval import RecipeIndex
 
 CARBONARA = make_recipe(
     "carbonara",
@@ -36,38 +29,8 @@ LENTIL_SOUP = make_recipe(
 CORPUS = [CARBONARA, LENTIL_SOUP]
 
 
-class MockLLM:
-    def __init__(self, responses=None, error: Exception | None = None):
-        self.responses = list(responses or [])
-        self.error = error
-        self.calls: list = []
-
-    async def complete(self, messages, **params):
-        self.calls.append((messages, params))
-        if self.error is not None:
-            raise self.error
-        return self.responses.pop(0)
-
-
-def llm_json(answer=None, citation_ids=(), refused=False, refusal_reason=None) -> str:
-    return json.dumps(
-        {
-            "answer": answer,
-            "citation_ids": list(citation_ids),
-            "refused": refused,
-            "refusal_reason": refusal_reason,
-        }
-    )
-
-
 def build_client(llm=None, **settings_overrides) -> tuple[TestClient, MockLLM]:
-    llm = llm or MockLLM()
-    settings = Settings(llm_api_key="test-key", **settings_overrides)
-    index = RecipeIndex(CORPUS, StubEmbedder(), settings)
-    asyncio.run(index.build())
-    app = create_app()
-    app.state.pipeline = Pipeline(index=index, llm=llm, settings=settings)
-    return TestClient(app), llm
+    return build_client_base(CORPUS, llm, **settings_overrides)
 
 
 def assert_invariants(body: dict):
