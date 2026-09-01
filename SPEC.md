@@ -186,12 +186,14 @@ Everything a developer would otherwise decide silently in code:
      parser module as the authoritative list).
    - Exclusions: "without X", "no X", "X-free" — **except** when X is an
      allergen term, which routes to the safety gate instead.
-3. **Safety triggers** (case-insensitive substring/word match): allergy,
-   allergic, allergen, nut-free, gluten intolerance/celiac (as safety, vs.
-   "gluten-free" as diet preference — the trigger is intolerance/allergy
-   phrasing), "safe for/to eat", pregnant/pregnancy, raw egg safety,
-   lactose intolerance, food poisoning. The authoritative list is a constant
-   in the safety module; additions require updating this section.
+3. **Safety triggers** (case-insensitive word/phrase match): allergy,
+   allergic, allergen, nut-free, peanut-free, gluten intolerance/celiac (as
+   safety, vs. "gluten-free" as diet preference — the trigger is
+   intolerance/allergy phrasing), "safe for", "safe to eat", "is it safe",
+   pregnant/pregnancy, raw egg(s), lactose intolerance, food poisoning.
+   The authoritative list is `SAFETY_TRIGGERS` in the safety module;
+   additions require updating this section in the same commit. Safety
+   answers cite up to 3 best-matching recipes.
 4. **Time extraction from recipe pages:** parse the recipe infobox/template
    time fields; sum prep + cook when both present; ranges take the upper
    bound; unparseable → `null`.

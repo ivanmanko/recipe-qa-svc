@@ -61,6 +61,10 @@ class RecipeIndex:
         self._bm25: BM25Okapi | None = None
         self._doc_matrix: np.ndarray | None = None
 
+    @property
+    def recipes(self) -> list[Recipe]:
+        return self._recipes
+
     async def build(self) -> None:
         texts = [r.text for r in self._recipes]
         self._bm25 = BM25Okapi([_tokenize(t) for t in texts])

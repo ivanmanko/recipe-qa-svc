@@ -8,13 +8,13 @@ harness.
 import asyncio
 import json
 
+from conftest import StubEmbedder, make_recipe
 from fastapi.testclient import TestClient
 
 from recipe_qa.app import create_app
 from recipe_qa.config import Settings
 from recipe_qa.pipeline import Pipeline
 from recipe_qa.retrieval import RecipeIndex
-from conftest import StubEmbedder, make_recipe
 
 CARBONARA = make_recipe(
     "carbonara",
