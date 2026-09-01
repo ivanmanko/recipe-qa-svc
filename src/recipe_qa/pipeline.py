@@ -121,7 +121,17 @@ class Pipeline:
         )
 
     def _safety_response(self, request_id: str, result: RetrievalResult) -> AskResponse:
-        cited = result.candidates[:SAFETY_CITATIONS_LIMIT] if result.threshold_passed else []
+        # Only recipes that individually clear the relevance thresholds are
+        # shown (SPEC §7.3): the top-k list is padded with weak matches, and
+        # listing an unrelated dish's ingredients under a safety question is
+        # actively misleading. Same declared thresholds as the gate.
+        relevant = [
+            c
+            for c in result.candidates
+            if c.vector_score >= self._settings.vector_score_threshold
+            or c.bm25_score >= self._settings.bm25_score_threshold
+        ]
+        cited = relevant[:SAFETY_CITATIONS_LIMIT]
         parts = [SAFETY_DISCLAIMER] if cited else [
             "I can't make safety judgments, and no recipe in the corpus matches "
             "this question closely enough to show its ingredients."

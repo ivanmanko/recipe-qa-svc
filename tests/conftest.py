@@ -64,7 +64,10 @@ def make_recipe(id_, title, text, time_minutes=None, diet_tags=(), ingredients=(
 
 
 def build_client(
-    corpus: list[Recipe], llm: MockLLM | None = None, **settings_overrides
+    corpus: list[Recipe],
+    llm: MockLLM | None = None,
+    embedder: StubEmbedder | None = None,
+    **settings_overrides,
 ) -> tuple[TestClient, MockLLM]:
     """App with an injected pipeline: stub embedder, mocked LLM, tiny corpus."""
     llm = llm or MockLLM()
@@ -74,7 +77,7 @@ def build_client(
     settings_overrides.setdefault("vector_score_threshold", 0.0)
     settings_overrides.setdefault("bm25_score_threshold", 0.0)
     settings = Settings(llm_api_key="test-key", **settings_overrides)
-    index = RecipeIndex(corpus, StubEmbedder(), settings)
+    index = RecipeIndex(corpus, embedder or StubEmbedder(), settings)
     asyncio.run(index.build())
     app = create_app()
     app.state.pipeline = Pipeline(index=index, llm=llm, settings=settings)

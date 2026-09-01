@@ -206,7 +206,10 @@ Everything a developer would otherwise decide silently in code:
    pregnant/pregnancy, raw egg(s), lactose intolerance, food poisoning.
    The authoritative list is `SAFETY_TRIGGERS` in the safety module;
    additions require updating this section in the same commit. Safety
-   answers cite up to 3 best-matching recipes.
+   answers cite up to 3 recipes, and only those that individually clear the
+   §7.1 relevance thresholds — listing an unrelated dish's ingredients under
+   a safety question misleads. If none clears them, the refusal carries no
+   citations and says no recipe matched closely enough.
 4. **Time extraction from recipe pages:** parse the recipe infobox/template
    time fields; sum prep + cook when both present; ranges take the upper
    bound; unparseable → `null`.

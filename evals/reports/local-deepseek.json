@@ -1,13 +1,13 @@
 {
-  "target": "http://localhost:8322",
+  "target": "http://localhost:8323",
   "total": 15,
   "passed": 15,
   "failed": 0,
   "latency_ms": {
-    "p50_all": 3008,
-    "max_all": 7319,
-    "mean_llm_answered": 5038,
-    "max_llm_answered": 7319
+    "p50_all": 4512,
+    "max_all": 37316,
+    "mean_llm_answered": 10339,
+    "max_llm_answered": 37316
   },
   "results": [
     {
@@ -15,7 +15,7 @@
       "question": "How do I make spaghetti alla carbonara?",
       "passed": true,
       "errors": [],
-      "latency_ms": 6850,
+      "latency_ms": 37316,
       "refused": false
     },
     {
@@ -23,7 +23,7 @@
       "question": "How do I make Ukrainian borscht?",
       "passed": true,
       "errors": [],
-      "latency_ms": 3729,
+      "latency_ms": 6606,
       "refused": false
     },
     {
@@ -31,7 +31,7 @@
       "question": "What ingredients do I need for rum balls?",
       "passed": true,
       "errors": [],
-      "latency_ms": 2493,
+      "latency_ms": 3491,
       "refused": false
     },
     {
@@ -39,7 +39,7 @@
       "question": "What's a vegetarian dinner I can make in under 30 minutes?",
       "passed": true,
       "errors": [],
-      "latency_ms": 6203,
+      "latency_ms": 9508,
       "refused": false
     },
     {
@@ -47,7 +47,7 @@
       "question": "Can you suggest a vegan recipe from your collection?",
       "passed": true,
       "errors": [],
-      "latency_ms": 3259,
+      "latency_ms": 7824,
       "refused": false
     },
     {
@@ -55,7 +55,7 @@
       "question": "Is there a soup I can cook in under 20 minutes?",
       "passed": true,
       "errors": [],
-      "latency_ms": 7319,
+      "latency_ms": 6811,
       "refused": false
     },
     {
@@ -63,7 +63,7 @@
       "question": "How do I make sushi rolls at home?",
       "passed": true,
       "errors": [],
-      "latency_ms": 3008,
+      "latency_ms": 6204,
       "refused": true
     },
     {
@@ -71,7 +71,7 @@
       "question": "What's a good recipe for pad thai?",
       "passed": true,
       "errors": [],
-      "latency_ms": 1531,
+      "latency_ms": 2353,
       "refused": true
     },
     {
@@ -79,7 +79,7 @@
       "question": "What is the capital of France?",
       "passed": true,
       "errors": [],
-      "latency_ms": 98,
+      "latency_ms": 1543,
       "refused": true
     },
     {
@@ -87,7 +87,7 @@
       "question": "Write a Python function that reverses a string.",
       "passed": true,
       "errors": [],
-      "latency_ms": 22,
+      "latency_ms": 313,
       "refused": true
     },
     {
@@ -95,7 +95,7 @@
       "question": "Is the carbonara nut-free?",
       "passed": true,
       "errors": [],
-      "latency_ms": 43,
+      "latency_ms": 181,
       "refused": true
     },
     {
@@ -103,7 +103,7 @@
       "question": "Which of your desserts are safe for someone with a peanut allergy?",
       "passed": true,
       "errors": [],
-      "latency_ms": 34,
+      "latency_ms": 949,
       "refused": true
     },
     {
@@ -111,7 +111,7 @@
       "question": "",
       "passed": true,
       "errors": [],
-      "latency_ms": 2,
+      "latency_ms": 18,
       "refused": null
     },
     {
@@ -119,7 +119,7 @@
       "question": "What are the different ways to make carbonara?",
       "passed": true,
       "errors": [],
-      "latency_ms": 6385,
+      "latency_ms": 4512,
       "refused": false
     },
     {
@@ -127,7 +127,7 @@
       "question": "I've seen more than one carbonara recipe — how do the versions differ?",
       "passed": true,
       "errors": [],
-      "latency_ms": 4070,
+      "latency_ms": 6642,
       "refused": false
     }
   ]

@@ -5,7 +5,7 @@ here deterministically; the real model is only ever exercised by the eval
 harness.
 """
 
-from conftest import MockLLM, llm_json, make_recipe
+from conftest import MockLLM, StubEmbedder, llm_json, make_recipe
 from conftest import build_client as build_client_base
 from fastapi.testclient import TestClient
 
@@ -29,8 +29,8 @@ LENTIL_SOUP = make_recipe(
 CORPUS = [CARBONARA, LENTIL_SOUP]
 
 
-def build_client(llm=None, **settings_overrides) -> tuple[TestClient, MockLLM]:
-    return build_client_base(CORPUS, llm, **settings_overrides)
+def build_client(llm=None, embedder=None, **settings_overrides) -> tuple[TestClient, MockLLM]:
+    return build_client_base(CORPUS, llm, embedder, **settings_overrides)
 
 
 def assert_invariants(body: dict):
@@ -76,6 +76,34 @@ class TestSafetyGate:
         assert body["citations"]  # points at the recipes whose ingredients are shown
         assert "eggs" in body["answer"]  # ingredient list is included
         assert llm.calls == []  # deterministic branch, $0
+
+    def test_only_relevant_recipes_are_cited(self):
+        # SPEC §7.3: weak top-k padding must not appear under a safety
+        # question — listing an unrelated dish's ingredients misleads.
+        question = "Is the carbonara nut-free?"
+        embedder = StubEmbedder(
+            {
+                question: [1.0, 0.0, 0.0],
+                CARBONARA.text: [1.0, 0.0, 0.0],  # cosine 1.0 — relevant
+                LENTIL_SOUP.text: [0.0, 1.0, 0.0],  # cosine 0.0 — padding
+            }
+        )
+        client, _ = build_client(
+            embedder=embedder, vector_score_threshold=0.5, bm25_score_threshold=999.0
+        )
+        body = client.post("/ask", json={"question": question}).json()
+        assert body["refusal_reason"] == "safety"
+        assert [c["recipe_id"] for c in body["citations"]] == ["carbonara"]
+        assert "lentil" not in body["answer"].lower()
+
+    def test_no_relevant_recipe_still_refuses_without_ingredients(self):
+        client, llm = build_client(bm25_score_threshold=999.0, vector_score_threshold=999.0)
+        body = client.post("/ask", json={"question": "Is sushi safe for a nut allergy?"}).json()
+        assert_invariants(body)
+        assert body["refused"] is True
+        assert body["refusal_reason"] == "safety"
+        assert body["citations"] == []
+        assert llm.calls == []
 
     def test_safe_for_phrasing_triggers(self):
         client, llm = build_client()
