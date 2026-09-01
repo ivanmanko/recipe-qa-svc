@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+  # Deployment itself is git-driven: Northflank builds and deploys every push
+  # to main (see northflank-template.json). This job verifies the deployment:
+  # wait until /health responds, then run the full eval harness against prod.
+  verify-deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - name: Smoke check /health (waits for Northflank rollout)
+        env:
+          PROD_URL: ${{ secrets.PROD_URL }}
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fsS "$PROD_URL/health"; then exit 0; fi
+            echo "waiting for deployment ($i/90)..."
+            sleep 10
+          done
+          echo "service did not become healthy in 15 minutes" >&2
+          exit 1
+      - name: Run eval harness against production
+        env:
+          PROD_URL: ${{ secrets.PROD_URL }}
+        run: uv run python evals/run_evals.py --target "$PROD_URL"
