@@ -255,10 +255,19 @@ in production" (README).
 
 ## 9. Non-functional targets
 
-- **Latency:** p95 < 4 s end-to-end for LLM-answered questions on the
-  deployed instance; deterministic refusals < 300 ms. Retrieval itself
-  < 100 ms (in-memory, ~50 docs). Measured by the eval harness; actual
-  numbers go to README.
+- **Latency targets, and measured reality** (harness run, README carries the
+  full table). Two of three targets are **not met**; recorded here rather
+  than quietly relaxed, because a target restated as if achieved is the same
+  failure mode as hidden hardcoded behavior.
+
+  | Target | Measured | |
+  |---|---|---|
+  | p95 < 4 s end-to-end, LLM-answered | 1.9–7.9 s | ✗ missed |
+  | Deterministic refusals < 300 ms | 26–184 ms | ✓ met |
+  | Retrieval < 100 ms | 220 ms mean, 575 ms max | ✗ missed (CPU query embedding, not the 55×384 scan) |
+
+  Optimization order for the miss is in the README; generation is ~95% of an
+  answered request, so retrieval is not what to fix first.
 - **Cost:** deterministic branches (gate refusals, empty-candidate refusals,
   safety, 422) cost $0 in LLM fees; an `out_of_corpus` refusal for an absent
   dish typically costs one LLM call (§4 stage 6). Target < $2 per 1,000 questions all-in; computed from measured
