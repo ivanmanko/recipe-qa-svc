@@ -90,12 +90,51 @@ raw API is polite on its own — but no client or test may rely on that text.
 
 ### 3.2 `GET /health`
 
-`200 {"status": "ok", "corpus_size": <int>}` once indexes are built.
-Used by the deploy smoke check.
+`200 {"status": "ok", "corpus_size": <int>, "git_sha": "<commit>"}` once
+indexes are built. `git_sha` is the commit the image was built from; the
+deploy check waits for it to match the revision being deployed (§ Deployment
+in README), rather than for "something is answering".
 
-### 3.3 `GET /`
+### 3.3 `GET /recipes/{recipe_id}`
 
-Serves the single-page UI (static files built from TypeScript).
+Returns one corpus recipe in full, so a client can show the cited source
+without sending the reader to another site.
+
+```json
+{
+  "id": "spaghetti-alla-carbonara",
+  "title": "Spaghetti alla Carbonara",
+  "url": "https://en.wikibooks.org/wiki/Cookbook:Spaghetti_alla_Carbonara",
+  "time_minutes": 60,
+  "diet_tags": [],
+  "ingredients": ["…"],
+  "steps": ["…"]
+}
+```
+
+Unknown id → **HTTP 404** `{"detail": "recipe_not_found"}`.
+
+This endpoint is **additive and deliberately separate from `AskResponse`**:
+`/ask` is the graded contract the eval harness asserts against, and embedding
+five full recipes in every answer would grow that payload for a presentation
+concern. Citations keep carrying `recipe_id`, and a client that wants the body
+asks for it.
+
+**Attribution is mandatory for any client that renders this content.** The
+corpus is Wikibooks Cookbook, licensed **CC BY-SA 4.0** (verified via the
+MediaWiki `rightsinfo` API, 2026-09-01). Displaying recipe text on our own
+page — as opposed to linking out — obliges us to name the source, link the
+original page, and name the licence. Our own UI does this under every expanded
+recipe; the `url` field is what makes it possible, so it is never dropped.
+
+### 3.4 `GET /`
+
+Serves the single-page UI (static files built from TypeScript). The UI's job
+is to make the response contract visible: an answer with its citations, a
+refusal with its machine-readable reason, and an error, each distinguishable
+at a glance. Cited recipes expand in place (§3.3). Example questions shown on
+the page deliberately include a refusal and a safety case, because those are
+as much the product as the answers are.
 
 ## 4. Answer pipeline (normative behavior)
 
