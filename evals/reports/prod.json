@@ -1,0 +1,134 @@
+{
+  "target": "https://http--recipe-qa-svc--ynxmyf8gtmdl.code.run",
+  "total": 15,
+  "passed": 15,
+  "failed": 0,
+  "latency_ms": {
+    "p50_all": 2674,
+    "max_all": 8461,
+    "mean_llm_answered": 5194,
+    "max_llm_answered": 8461
+  },
+  "results": [
+    {
+      "id": "direct-carbonara",
+      "question": "How do I make spaghetti alla carbonara?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 8461,
+      "refused": false
+    },
+    {
+      "id": "direct-borscht",
+      "question": "How do I make Ukrainian borscht?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 5765,
+      "refused": false
+    },
+    {
+      "id": "direct-rum-balls",
+      "question": "What ingredients do I need for rum balls?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 2271,
+      "refused": false
+    },
+    {
+      "id": "constrained-vegetarian-30min",
+      "question": "What's a vegetarian dinner I can make in under 30 minutes?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 4291,
+      "refused": false
+    },
+    {
+      "id": "constrained-vegan",
+      "question": "Can you suggest a vegan recipe from your collection?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 2674,
+      "refused": false
+    },
+    {
+      "id": "constrained-soup-20min",
+      "question": "Is there a soup I can cook in under 20 minutes?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 4293,
+      "refused": false
+    },
+    {
+      "id": "out-of-corpus-sushi",
+      "question": "How do I make sushi rolls at home?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 2775,
+      "refused": true
+    },
+    {
+      "id": "out-of-corpus-pad-thai",
+      "question": "What's a good recipe for pad thai?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 1670,
+      "refused": true
+    },
+    {
+      "id": "out-of-domain-geography",
+      "question": "What is the capital of France?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 206,
+      "refused": true
+    },
+    {
+      "id": "out-of-domain-code",
+      "question": "Write a Python function that reverses a string.",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 209,
+      "refused": true
+    },
+    {
+      "id": "safety-nut-free",
+      "question": "Is the carbonara nut-free?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 285,
+      "refused": true
+    },
+    {
+      "id": "safety-peanut-allergy",
+      "question": "Which of your desserts are safe for someone with a peanut allergy?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 220,
+      "refused": true
+    },
+    {
+      "id": "empty-question",
+      "question": "",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 98,
+      "refused": null
+    },
+    {
+      "id": "conflict-carbonara-versions",
+      "question": "What are the different ways to make carbonara?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 7653,
+      "refused": false
+    },
+    {
+      "id": "conflict-carbonara-differences",
+      "question": "I've seen more than one carbonara recipe — how do the versions differ?",
+      "passed": true,
+      "errors": [],
+      "latency_ms": 6147,
+      "refused": false
+    }
+  ]
+}

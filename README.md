@@ -12,11 +12,16 @@ the eval harness asserts against. Decisions and their trade-offs are in
 
 | | |
 |---|---|
-| Deployed UI + API | ⚠️ see [Deployment](#deployment) — blocked on a Northflank payment method |
-| Container-level access | Northflank project dashboard (see [Deployment](#deployment)) |
-| Eval status | **15/15**, run against the built container image ([report](evals/reports/docker-onnx.json)) |
+| Deployed UI + API | **https://http--recipe-qa-svc--ynxmyf8gtmdl.code.run** — `/` is the UI, `POST /ask` the API, `/health` the probe |
+| Container-level access | Northflank project `recipe-qa` (see [Deployment](#deployment)) |
+| Eval status | **15/15 against production** ([report](evals/reports/prod.json)) |
 | Tests | 64 unit tests, no LLM or network required |
-| Image | 1.05 GB, `docker run` verified end to end |
+| Image | 1.05 GB, runs in a 512 MB container |
+
+> **Note for reviewers:** the service runs on hourly-billed infrastructure, so
+> it may be paused between review sessions. If the URL does not answer, ask and
+> it will be back within a few minutes — redeploying is a single template run
+> (see [Deployment](#deployment)), which is the point of keeping it IaC.
 
 ## What it does
 
@@ -145,12 +150,16 @@ Infrastructure adds a flat $24/month (Northflank `nf-compute-100-2`,
 1 vCPU / 2 GB) regardless of volume, which dominates the bill until roughly
 20,000 questions/month.
 
-| Measured latency | |
-|---|---|
-| Deterministic refusals (no LLM) | 6–14 ms |
-| Retrieval only | 13 ms mean, 30 ms max |
-| LLM call | 4188 ms mean, 7179 ms max |
-| End-to-end, LLM-answered | 1.9–7.9 s |
+| Measured latency | Local | **Deployed** (0.2 vCPU) |
+|---|---|---|
+| Deterministic refusals (no LLM) | 6–14 ms | 206–285 ms |
+| Retrieval only | 13 ms mean, 30 ms max | — |
+| LLM call | 4188 ms mean, 7179 ms max | — |
+| End-to-end, LLM-answered | 1.9–7.9 s | 1.7–8.5 s (mean 5.2 s) |
+
+Deployed refusals are ~200 ms rather than ~10 ms, which is the round trip plus
+0.2 shared vCPU doing the query embedding — still an order of magnitude inside
+the 300 ms budget, and still $0.
 
 **We miss the p95 < 4 s target in SPEC §9** — end-to-end LLM answers run 5–8 s.
 Reported as measured rather than quietly relaxed. Generation is ~99% of that
@@ -188,13 +197,26 @@ not taste.
 
 ## Deployment
 
-**Status: not live.** The Northflank template ran and failed at the resource
-step with `Please complete your account by adding a default payment method` —
-the account has no payment method attached (the free tier still requires a
-card on file). Everything upstream of that is done and verified: the GitHub
-integration is linked, the template validates and is created on Northflank,
-and the run reaches the project/service creation step. Adding the card is the
-one manual, human action left; the deploy command itself is scripted below.
+**Live at https://http--recipe-qa-svc--ynxmyf8gtmdl.code.run**, deployed from
+the committed template, running on `nf-compute-20` (0.2 vCPU / 512 MB,
+$5.41/month, billed per second). The golden set passes
+[15/15 against it](evals/reports/prod.json).
+
+**Three things the deployment taught that local testing had not**, each fixed
+rather than worked around:
+
+- Northflank's free Developer Sandbox cannot host this service at all — not
+  because of the app, but because the smallest *build* plan (8 vCPU) exceeds
+  the sandbox's build allowance. Pay-as-you-go was required.
+- The container OOM-killed at startup (exit 137) on 512 MB, despite running
+  in 348 MB locally under the same limit. Cause: ONNX Runtime sizes its
+  thread pool from the *host's* visible cores, not the container's CPU limit,
+  and each thread carries its own allocation arena. Pinning
+  `EMBEDDING_THREADS=1` made memory independent of the host — the honest
+  alternative was paying for a bigger plan to hide the bug.
+- Embedding the whole corpus in one batch peaked at 1.38 GB. Bounding the
+  startup batch to 4 brought that to 345 MB, which is what makes a 512 MB
+  plan viable at all.
 
 **Building the image locally is what surfaced the torch problem.** The first
 image measured **6.39 GB**, because `sentence-transformers` pulls `torch`,
