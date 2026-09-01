@@ -25,6 +25,7 @@ class LocalEmbedder:
 
     def __init__(self, settings: Settings):
         self._model_name = settings.embedding_model
+        self._batch_size = settings.embedding_batch_size
         self._model = None
         # Guards lazy construction only; onnxruntime inference is thread-safe.
         self._load_lock = threading.Lock()
@@ -45,8 +46,10 @@ class LocalEmbedder:
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
         # fastembed yields L2-normalized vectors for bge models and preserves
-        # input order.
-        return [vector.tolist() for vector in self._get_model().embed(texts)]
+        # input order. Batch size is capped (config) because embedding the
+        # whole corpus in one batch peaks at ~1.4 GB on these recipe lengths.
+        model = self._get_model()
+        return [v.tolist() for v in model.embed(texts, batch_size=self._batch_size)]
 
     async def embed_query(self, text: str) -> list[float]:
         embeddings = await self.embed_documents([text])

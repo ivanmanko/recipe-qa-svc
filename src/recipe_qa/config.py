@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     embedding_provider: str = "local"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dim: int = 384
+    # Startup index build embeds the corpus in batches. Measured peak RSS for
+    # 55 recipes: batch 55 (default) 1381 MB, 16 -> 667 MB, 8 -> 472 MB,
+    # 4 -> 345 MB. Long recipe texts make attention memory scale with batch
+    # size, so a small batch is what lets the service run on a 512 MB plan.
+    embedding_batch_size: int = 4
 
     # Retrieval — values mirrored in SPEC §7; change them there in the same commit.
     retrieval_top_k: int = 5
