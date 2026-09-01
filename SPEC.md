@@ -370,10 +370,21 @@ in production" (README).
 
 ## 10. Acceptance criteria
 
-The golden set (`evals/golden_set.yaml`, 15 questions) encodes §4–§6:
+The golden set (`evals/golden_set.yaml`, 17 questions) encodes §4–§6:
 3 direct recipe lookups (correct source retrieved) · 3 constrained questions
 (constraints obeyed in citations) · 2 `out_of_corpus` · 2 `out_of_domain` ·
-2 safety · 1 empty/garbage input · 2 conflicting-recipes questions.
+2 safety · 1 empty input · 2 conflicting-recipes questions · 1 prompt
+injection (§6 #8) · 1 non-English question (§6 #9).
+
+The brief asks for 12–15; this set is 17 because the last two edge cases were
+described in §6 but not verified, and a spec that claims coverage it does not
+have is the same defect as an undeclared heuristic. The set is deliberately
+not grown further: it exists to check declared behavior, not to accumulate
+questions.
+
+The golden set is **held-out with respect to the relevance thresholds** —
+those are chosen on the disjoint `evals/tuning_set.yaml` (§7.1), so its pass
+rate measures them rather than confirming them.
 
 `python evals/run_evals.py --target <base_url>` runs the full set, validates
 **every** response against the `AskResponse` Pydantic model and the
