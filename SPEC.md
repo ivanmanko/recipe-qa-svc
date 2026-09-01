@@ -54,6 +54,10 @@ Request body:
   than 500 characters → **HTTP 422** with FastAPI's standard validation body.
   422 responses are outside the `AskResponse` contract by design.
 
+Requests beyond the rate limit (§7.15) → **HTTP 429** with
+`{"detail": "rate_limited"}` and a `Retry-After` header; like 422, this sits
+outside the `AskResponse` contract.
+
 Every well-formed question — including every refusal — returns **HTTP 200**
 with `AskResponse`:
 
@@ -227,13 +231,28 @@ Everything a developer would otherwise decide silently in code:
    many recipes satisfy a time/diet filter) clears at least one
    **raw-signal** threshold: embedding cosine ≥ `vector_score_threshold =
    0.57` OR BM25 ≥ `bm25_score_threshold = 10.0` (values live in
-   `config.py`; this line mirrors them). RRF-fused scores are deliberately *not* used: they are
-   rank-based, so their scale is identical for every query and carries no
-   relevance signal. Tuned on the golden set (`evals/tune_thresholds.py`,
-   bge-small-en-v1.5 over the committed corpus): answerable questions
-   scored cosine 0.626–0.859 (exact dish names BM25 12.5–13.4); non-food
-   questions ≤ 0.525 / ≤ 8.7; food questions about absent dishes 0.669–0.750
-   — indistinguishable from answerable, hence the gate's refusal reason is
+   `config.py`; this line mirrors them). RRF-fused scores are deliberately
+   *not* used: they are rank-based, so their scale is identical for every
+   query and carries no relevance signal.
+
+   **The tuning set is disjoint from the golden set.** Thresholds are chosen
+   on `evals/tuning_set.yaml` via `evals/tune_thresholds.py`, which shares no
+   question with `evals/golden_set.yaml`. The golden set is therefore
+   held-out data for these two parameters: its pass rate measures them
+   instead of confirming them. `tune_thresholds.py` prints the separation
+   margin, so the numbers below stay checkable rather than quoted:
+
+   | Tuning-set group | Cosine | BM25 |
+   |---|---|---|
+   | Answerable | see script output | see script output |
+   | Not about food | see script output | see script output |
+
+   A threshold pressed against a group boundary would be the signature of
+   overfitting; the script reports the gap on each side so that claim can be
+   verified rather than asserted.
+
+   Food questions about *absent* dishes score inside the answerable range, so
+   the gate cannot separate them — which is why its refusal reason is
    `out_of_domain`, not `out_of_corpus` (§4 stage 5).
 2. **Constraint parser:** regex + vocabulary, English only. Runs only when
    the safety gate did *not* fire (§4 stage 2).
@@ -293,6 +312,19 @@ Everything a developer would otherwise decide silently in code:
     refusal and must not be disguised as one.
 13. **Ingest skips Cookbook pages without a parseable Ingredients section** —
     those are meta/navigation pages (cuisines, techniques), not recipes.
+14. **Generation is bounded by `max_tokens = 1024`.** Measured output is 391
+    tokens on average and 801 at the longest, so the bound does not truncate
+    legitimate answers; it caps a runaway generation's cost and latency. If a
+    response is ever truncated, it fails schema validation and takes the
+    retry path (§7.12) rather than reaching the client half-written.
+15. **Rate limit: 20 requests per minute per client IP** on `POST /ask`,
+    counted in a sliding 60-second window. Exceeding it → **HTTP 429** with
+    `{"detail": "rate_limited"}` and a `Retry-After` header. 429 is outside
+    the `AskResponse` contract, like 422. The limiter is in-process and
+    therefore per-instance: with several replicas the effective limit
+    multiplies, and a distributed source is not covered at all. This bounds
+    casual abuse of a public endpoint backed by a paid key; it is not a
+    security control (see README → Cut scope).
 
 ## 8. Observability
 
