@@ -226,9 +226,13 @@ Everything a developer would otherwise decide silently in code:
     are retrieved like any recipes; the generation prompt instructs the model
     to name variants when several retrieved recipes describe the same dish.
     (The golden set verifies this behaviorally.)
-11. **LLM temperature = 0**; structured output enforced by the OpenAI
-    `response_format` JSON-schema mechanism.
-12. **LLM failure** (timeout after retries / invalid output): HTTP 503 with
+11. **LLM temperature = 0**; structured output via the provider's JSON mode:
+    strict `json_schema` where supported (OpenAI; config flag
+    `llm_supports_json_schema`), otherwise `json_object` (DeepSeek) with the
+    exact output format exemplified in the system prompt. Every output is
+    validated server-side against the schema in both modes.
+12. **LLM failure** (timeout after transport retries, or output that fails
+    schema validation twice — one retry): HTTP 503 with
     `{"detail": "generation_unavailable"}` — an operational error is not a
     refusal and must not be disguised as one.
 13. **Ingest skips Cookbook pages without a parseable Ingredients section** —

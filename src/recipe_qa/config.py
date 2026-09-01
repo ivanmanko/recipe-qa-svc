@@ -7,9 +7,15 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # LLM — any OpenAI-compatible endpoint; the provider is configuration, not code.
+    # Defaults target DeepSeek (ADR-002); OpenAI needs base_url/model overrides
+    # plus llm_supports_json_schema=true.
     llm_api_key: str = ""
-    llm_base_url: str | None = None
-    llm_model: str = "gpt-4o-mini"
+    llm_base_url: str | None = "https://api.deepseek.com"
+    llm_model: str = "deepseek-v4-flash"
+    # DeepSeek's API accepts only {'type': 'json_object'}; providers with
+    # strict json_schema support (OpenAI) can flip this on. Either way the
+    # output is validated server-side against the schema (SPEC §7.11).
+    llm_supports_json_schema: bool = False
 
     # Embeddings: local by default (no key, no per-call cost); "openai" is the
     # documented slim-image fallback (ADR-002 alt. 5).

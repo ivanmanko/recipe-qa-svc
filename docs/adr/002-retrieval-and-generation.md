@@ -35,8 +35,16 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
      stays $0 only when constraint filters empty the candidate set.
 4. **Generation = one LLM call** with structured output, prompt limited to
    the retrieved recipes. Provider behind an OpenAI-compatible adapter
-   (`base_url`/`model`/`key` via env); default `gpt-4o-mini`
-   (cost numbers: TODO after measurement, prices verified on vendor page).
+   (`base_url`/`model`/`key` via env). Default: **DeepSeek
+   `deepseek-v4-flash`** — prices verified on the vendor pricing page
+   2026-09-01: $0.44 / 1M input tokens, $1.32 / 1M output (peak; off-peak
+   half of that; cache-hit input $0.014/M). Alternative measured at decision
+   time: OpenAI `gpt-4o-mini`-class models — comparable capability for this
+   task, and the switch is three env vars (`LLM_BASE_URL`, `LLM_MODEL`,
+   `LLM_SUPPORTS_JSON_SCHEMA=true` for strict schema mode). DeepSeek's API
+   supports only `json_object` mode, so the output schema is exemplified in
+   the prompt and always validated server-side; one retry on invalid output
+   (their docs warn of occasional empty content), then 503.
 
 ## Alternatives considered
 

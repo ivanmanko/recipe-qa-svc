@@ -145,14 +145,20 @@ class Pipeline:
     ) -> AskResponse:
         recipes = [c.recipe for c in result.candidates]
         messages = generation.build_messages(question, recipes)
-        try:
-            raw = await self._llm.complete(
-                messages, response_format=generation.response_format(), temperature=0
-            )
-            parsed = generation.parse_answer(raw)
-        except Exception as exc:
-            log["generation_error"] = repr(exc)
-            raise GenerationUnavailable(str(exc)) from exc
+        fmt = generation.response_format(self._settings.llm_supports_json_schema)
+        # One retry on unusable output (SPEC §7.12): json_object mode can
+        # occasionally return empty/invalid content.
+        last_exc: Exception | None = None
+        for _attempt in range(2):
+            try:
+                raw = await self._llm.complete(messages, response_format=fmt, temperature=0)
+                parsed = generation.parse_answer(raw)
+                break
+            except Exception as exc:  # noqa: BLE001 — anything here means "no usable answer"
+                last_exc = exc
+                log["generation_error"] = repr(exc)
+        else:
+            raise GenerationUnavailable(str(last_exc)) from last_exc
 
         if parsed.refused:
             reason = RefusalReason(parsed.refusal_reason or "out_of_corpus")

@@ -45,7 +45,8 @@
                   "secrets": {
                     "variables": {
                       "LLM_API_KEY": "${args.LLM_API_KEY}",
-                      "LLM_MODEL": "gpt-4o-mini"
+                      "LLM_MODEL": "deepseek-v4-flash",
+                      "LLM_BASE_URL": "https://api.deepseek.com"
                     },
                     "files": {}
                   },

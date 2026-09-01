@@ -22,7 +22,11 @@ SYSTEM_PROMPT = """You answer questions about recipes using ONLY the recipes pro
 6. Respect any constraint in the question (time, diet, excluded ingredients): only use recipes that satisfy it.
 7. If the question asks whether a dish is safe for an allergy, intolerance, pregnancy or similar, set refused=true with refusal_reason="out_of_corpus" — safety judgments are handled elsewhere and must not be answered here.
 8. When refused=true: answer=null and citation_ids=[].
-9. Keep answers concise and practical; plain text, no markdown."""
+9. Keep answers concise and practical; plain text, no markdown.
+
+Respond with a single json object in exactly this format:
+{"answer": "the answer text, or null when refusing", "citation_ids": ["recipe-id-1"], "refused": false, "refusal_reason": null}
+"refusal_reason" must be "out_of_corpus", "out_of_domain", or null. No other keys."""
 
 
 class LLMAnswer(BaseModel):
@@ -34,15 +38,20 @@ class LLMAnswer(BaseModel):
     refusal_reason: Literal["out_of_corpus", "out_of_domain"] | None
 
 
-def response_format() -> dict:
-    return {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "recipe_answer",
-            "strict": True,
-            "schema": LLMAnswer.model_json_schema(),
-        },
-    }
+def response_format(supports_json_schema: bool) -> dict:
+    """Strict schema where the provider supports it (OpenAI); plain JSON mode
+    otherwise (DeepSeek) — the prompt carries the format example required by
+    json_object mode, and parse_answer validates either way."""
+    if supports_json_schema:
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "recipe_answer",
+                "strict": True,
+                "schema": LLMAnswer.model_json_schema(),
+            },
+        }
+    return {"type": "json_object"}
 
 
 def _format_recipe(recipe: Recipe) -> str:

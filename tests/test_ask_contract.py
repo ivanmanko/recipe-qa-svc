@@ -161,6 +161,22 @@ class TestGeneration:
         assert body["refusal_reason"] == "out_of_domain"
         assert body["citations"] == []
 
+    def test_json_object_mode_is_default_response_format(self):
+        # DeepSeek supports only json_object (SPEC §7.11); strict json_schema
+        # is opt-in via llm_supports_json_schema for providers that have it.
+        llm = MockLLM([llm_json(answer="ok", citation_ids=["carbonara"])])
+        client, llm = build_client(llm)
+        client.post("/ask", json={"question": "how do I make carbonara?"})
+        (_, params), = llm.calls
+        assert params["response_format"] == {"type": "json_object"}
+
+    def test_invalid_output_retried_once_then_succeeds(self):
+        llm = MockLLM(["this is not json", llm_json(answer="ok", citation_ids=["carbonara"])])
+        client, llm = build_client(llm)
+        body = client.post("/ask", json={"question": "how do I make carbonara?"}).json()
+        assert body["refused"] is False
+        assert len(llm.calls) == 2
+
     def test_llm_failure_is_503_not_a_refusal(self):
         llm = MockLLM(error=RuntimeError("provider down"))
         client, _ = build_client(llm)
