@@ -82,8 +82,8 @@
                     }
                   },
                   "billing": {
-                    "deploymentPlan": "nf-compute-100-2",
-                    "buildPlan": "nf-compute-400-16"
+                    "deploymentPlan": "nf-compute-20",
+                    "buildPlan": "nf-compute-800-8"
                   },
                   "ports": [
                     {

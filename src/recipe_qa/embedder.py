@@ -26,6 +26,7 @@ class LocalEmbedder:
     def __init__(self, settings: Settings):
         self._model_name = settings.embedding_model
         self._batch_size = settings.embedding_batch_size
+        self._threads = settings.embedding_threads
         self._model = None
         # Guards lazy construction only; onnxruntime inference is thread-safe.
         self._load_lock = threading.Lock()
@@ -36,7 +37,9 @@ class LocalEmbedder:
                 if self._model is None:
                     from fastembed import TextEmbedding
 
-                    self._model = TextEmbedding(model_name=self._model_name)
+                    self._model = TextEmbedding(
+                        model_name=self._model_name, threads=self._threads
+                    )
         return self._model
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:

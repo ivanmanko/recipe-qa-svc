@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     # 4 -> 345 MB. Long recipe texts make attention memory scale with batch
     # size, so a small batch is what lets the service run on a 512 MB plan.
     embedding_batch_size: int = 4
+    # ONNX Runtime sizes its thread pool from the *host's* visible cores, not
+    # the container's CPU limit, and every thread carries its own allocation
+    # arena. On a big cloud node that OOM-killed a 512 MB container at startup
+    # (exit 137) while the same image ran fine on a laptop. Pinning the count
+    # makes memory independent of whatever host we land on.
+    embedding_threads: int = 1
 
     # Retrieval — values mirrored in SPEC §7; change them there in the same commit.
     retrieval_top_k: int = 5
