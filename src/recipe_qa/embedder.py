@@ -1,10 +1,10 @@
 import asyncio
+import threading
 from typing import Protocol
 
 from openai import AsyncOpenAI
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_random_exponential
 
-from recipe_qa._local_model_lock import TORCH_INFERENCE_LOCK
 from recipe_qa.config import Settings
 
 
@@ -13,22 +13,29 @@ class Embedder(Protocol):
     async def embed_query(self, text: str) -> list[float]: ...
 
 
-class HuggingFaceEmbedder:
-    """Local sentence-transformers embedder — no API key or network cost per call.
+class LocalEmbedder:
+    """ONNX-runtime embedder (fastembed) — no API key, no per-call cost.
 
-    Default: every question is embedded locally, so deterministic refusals
-    stay at $0 and the service has no external dependency besides the LLM.
+    Runs the same BAAI/bge-small-en-v1.5 weights sentence-transformers would,
+    verified equivalent to cosine 0.999999 (see ADR-002), but without torch:
+    the CUDA-flavoured torch stack cost 3.2 GB of image for one query vector
+    per request. Local embedding is what keeps deterministic refusals at $0 —
+    the relevance gate needs the query vector before it can refuse.
     """
 
     def __init__(self, settings: Settings):
         self._model_name = settings.embedding_model
         self._model = None
+        # Guards lazy construction only; onnxruntime inference is thread-safe.
+        self._load_lock = threading.Lock()
 
     def _get_model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
+            with self._load_lock:
+                if self._model is None:
+                    from fastembed import TextEmbedding
 
-            self._model = SentenceTransformer(self._model_name)
+                    self._model = TextEmbedding(model_name=self._model_name)
         return self._model
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -37,12 +44,9 @@ class HuggingFaceEmbedder:
         return await asyncio.to_thread(self._embed_sync, texts)
 
     def _embed_sync(self, texts: list[str]) -> list[list[float]]:
-        # Guards both lazy model construction and inference — see
-        # _local_model_lock.py for why this is process-wide.
-        with TORCH_INFERENCE_LOCK:
-            model = self._get_model()
-            vectors = model.encode(texts, normalize_embeddings=True)
-            return vectors.tolist()
+        # fastembed yields L2-normalized vectors for bge models and preserves
+        # input order.
+        return [vector.tolist() for vector in self._get_model().embed(texts)]
 
     async def embed_query(self, text: str) -> list[float]:
         embeddings = await self.embed_documents([text])
@@ -50,8 +54,9 @@ class HuggingFaceEmbedder:
 
 
 class OpenAIEmbedder:
-    """API embeddings — the slim-image fallback if the torch image is too heavy
-    for the deploy target (ADR-002 alt. 5, ADR-004). Selected via env."""
+    """API embeddings — available via env for deployments that would rather
+    not ship the model at all. Trade-off (ADR-002): it puts a network call on
+    every question, including the ones that currently refuse for $0."""
 
     def __init__(self, settings: Settings, client: AsyncOpenAI | None = None):
         self._model = settings.embedding_model
@@ -74,8 +79,8 @@ class OpenAIEmbedder:
 
 
 def get_embedder(settings: Settings) -> Embedder:
-    if settings.embedding_provider == "huggingface":
-        return HuggingFaceEmbedder(settings)
+    if settings.embedding_provider == "local":
+        return LocalEmbedder(settings)
     if settings.embedding_provider == "openai":
         return OpenAIEmbedder(settings)
     raise ValueError(f"Unknown embedding_provider: {settings.embedding_provider!r}")

@@ -11,10 +11,8 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
-# No UV_COMPILE_BYTECODE: uv's 60s-per-file bytecode compiler times out on
-# torch's generated test modules and fails the build. Bytecode caching only
-# buys a little first-import speed, and model load dominates startup anyway.
-ENV UV_LINK_MODE=copy \
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1
 
 COPY pyproject.toml uv.lock ./
@@ -26,7 +24,7 @@ RUN uv sync --frozen --no-dev
 
 # Bake the embedding model into the image: startup then needs no network and
 # repeat deploys are byte-identical. Model name mirrors config.py's default.
-RUN uv run --no-sync python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+RUN uv run --no-sync python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5')"
 
 COPY --from=frontend /build/dist frontend/dist
 

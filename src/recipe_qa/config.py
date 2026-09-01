@@ -17,9 +17,9 @@ class Settings(BaseSettings):
     # output is validated server-side against the schema (SPEC §7.11).
     llm_supports_json_schema: bool = False
 
-    # Embeddings: local by default (no key, no per-call cost); "openai" is the
-    # documented slim-image fallback (ADR-002 alt. 5).
-    embedding_provider: str = "huggingface"
+    # Embeddings: "local" (ONNX via fastembed, no key, no per-call cost) or
+    # "openai" (API — see ADR-002 for why it is not the default).
+    embedding_provider: str = "local"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dim: int = 384
 
