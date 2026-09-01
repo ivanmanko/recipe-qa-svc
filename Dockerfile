@@ -11,8 +11,10 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
+# No UV_COMPILE_BYTECODE: uv's 60s-per-file bytecode compiler times out on
+# torch's generated test modules and fails the build. Bytecode caching only
+# buys a little first-import speed, and model load dominates startup anyway.
+ENV UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1
 
 COPY pyproject.toml uv.lock ./
