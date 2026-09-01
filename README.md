@@ -79,6 +79,13 @@ Open http://localhost:8000 for the UI; the API is on the same origin
 uv run python scripts/ingest.py
 ```
 
+Selection is deterministic (fixed categories, fixed caps, members sorted by
+title), and a re-run was verified to produce a byte-identical file. It is
+reproducible against *unchanged* upstream pages — Wikibooks is a live wiki, so
+an edit there will legitimately change the output. That is why the built
+corpus is committed as well: the deployed image never depends on what the wiki
+looks like at build time.
+
 **Tests, lint, evals:**
 
 ```bash
