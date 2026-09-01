@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     bm25_score_threshold: float = 0.0
 
     corpus_path: str = "data/corpus.json"
+    static_dir: str = "frontend/dist"
     max_question_length: int = 500
 
     api_host: str = "0.0.0.0"

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.staticfiles import StaticFiles
 
 from recipe_qa.config import get_settings
 from recipe_qa.embedder import get_embedder
@@ -50,6 +51,12 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=503, detail="generation_unavailable") from None
         response.headers["X-Request-ID"] = result.request_id
         return result
+
+    # UI (SPEC §3.3): built frontend served from the same container — one URL,
+    # no CORS. Mounted last so API routes keep precedence.
+    static_dir = Path(get_settings().static_dir)
+    if static_dir.is_dir():
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="ui")
 
     return app
 
