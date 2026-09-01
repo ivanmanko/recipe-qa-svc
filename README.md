@@ -146,14 +146,19 @@ Infrastructure adds a flat $24/month (Northflank `nf-compute-100-2`,
 
 | Measured latency | |
 |---|---|
-| Deterministic refusals (no LLM) | 26–184 ms |
-| Retrieval only | 220 ms mean, 575 ms max |
+| Deterministic refusals (no LLM) | 6–14 ms |
+| Retrieval only | 13 ms mean, 30 ms max |
 | LLM call | 4188 ms mean, 7179 ms max |
 | End-to-end, LLM-answered | 1.9–7.9 s |
 
 **We miss the p95 < 4 s target in SPEC §9** — end-to-end LLM answers run 5–8 s.
-Reported as measured rather than quietly relaxed. The generation call is
-~95% of that time; retrieval is noise by comparison.
+Reported as measured rather than quietly relaxed. Generation is ~99% of that
+time, so retrieval is not the thing to optimize.
+
+Retrieval used to be 220 ms and missed its own < 100 ms target; swapping
+torch for ONNX embeddings ([ADR-002](docs/adr/002-retrieval-and-generation.md))
+cut it to 13 ms and shrank the image at the same time — see
+[Deployment](#deployment).
 
 **The bottleneck is output tokens** (391 mean, up to 801), because generation
 time scales with tokens produced. What I would do next, in order:
@@ -190,19 +195,15 @@ integration is linked, the template validates and is created on Northflank,
 and the run reaches the project/service creation step. Adding the card is the
 one manual, human action left; the deploy command itself is scripted below.
 
-**Two build problems found and fixed by building the image locally** — both
-would have failed or bloated the Northflank build identically:
-
-- `sentence-transformers` pulls `torch`, which on Linux defaults to the CUDA
-  build: ~2.5 GB of nvidia libraries for a service that only ever embeds on
-  CPU. The first image measured **6.39 GB**. `pyproject.toml` now pins torch
-  to the CPU wheel index on Linux (`tool.uv.sources` with a `sys_platform`
-  marker — note that it binds *direct* dependencies only, so torch is
-  declared explicitly even though it arrives transitively).
-- `UV_COMPILE_BYTECODE=1` fails the build outright: uv's bytecode compiler
-  hits its 60-second per-file limit on torch's generated test modules
-  (`common_methods_invocations.py`). Removed — it buys a little first-import
-  speed, which model loading dominates anyway.
+**Building the image locally is what surfaced the torch problem.** The first
+image measured **6.39 GB**, because `sentence-transformers` pulls `torch`,
+which on Linux defaults to the CUDA build — ~2.5 GB of nvidia libraries for a
+service that computes one 384-dim vector per request on CPU. It also failed
+the build outright under `UV_COMPILE_BYTECODE=1` (uv's 60 s/file limit, hit on
+torch's generated test modules). Pinning CPU-only wheels got it to 3.2 GB;
+dropping torch for ONNX Runtime (`fastembed`, same weights) is what actually
+fixed it. See [ADR-002](docs/adr/002-retrieval-and-generation.md) for the
+equivalence check and the numbers.
 
 **Why Northflank.** AWS with Terraform would have consumed 2–3 hours of the
 budget on ECS/IAM/ALB plumbing. Northflank gives git-driven container deploys,

@@ -275,11 +275,13 @@ in production" (README).
   | Target | Measured | |
   |---|---|---|
   | p95 < 4 s end-to-end, LLM-answered | 1.9–7.9 s | ✗ missed |
-  | Deterministic refusals < 300 ms | 26–184 ms | ✓ met |
-  | Retrieval < 100 ms | 220 ms mean, 575 ms max | ✗ missed (CPU query embedding, not the 55×384 scan) |
+  | Deterministic refusals < 300 ms | 6–14 ms | ✓ met |
+  | Retrieval < 100 ms | 13 ms mean, 30 ms max | ✓ met |
 
-  Optimization order for the miss is in the README; generation is ~95% of an
-  answered request, so retrieval is not what to fix first.
+  Retrieval originally missed its target at 220 ms mean; replacing torch with
+  ONNX embeddings (ADR-002) cut it to 13 ms. The end-to-end miss is entirely
+  generation — ~99% of an answered request is the LLM call — so the
+  optimization order in the README targets output tokens, not retrieval.
 - **Cost:** deterministic branches (gate refusals, empty-candidate refusals,
   safety, 422) cost $0 in LLM fees; an `out_of_corpus` refusal for an absent
   dish typically costs one LLM call (§4 stage 6). Target < $2 per 1,000 questions all-in; computed from measured

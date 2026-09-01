@@ -14,10 +14,10 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
 ## Decision
 
 1. **Hybrid retrieval, in-memory:** BM25 (`rank-bm25`) + dense embeddings
-   (`BAAI/bge-small-en-v1.5`, local, 384-dim), fused with Reciprocal Rank
-   Fusion. Indexes are built at startup from `data/corpus.json`; the
-   embedding matrix for 50 docs is ~75 KB — brute-force cosine is
-   microseconds.
+   (`BAAI/bge-small-en-v1.5`, local, 384-dim, run through **ONNX Runtime via
+   `fastembed`**), fused with Reciprocal Rank Fusion. Indexes are built at
+   startup from `data/corpus.json`; the embedding matrix for 55 docs is
+   ~85 KB — brute-force cosine is microseconds.
 2. **Hard metadata filters** (time / diet / excluded ingredients) applied on
    top of fused ranking, from a deterministic constraint parser (SPEC §7.2).
 3. **Relevance gate before the LLM:** the best eligible candidate must clear
@@ -72,11 +72,24 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
    golden set's constrained questions (BM25 4.9–9.99) from non-food ones
    (3.4–8.65), while cosine does (0.626+ vs ≤ 0.525) — the two signals are
    complementary, which is why the gate accepts either.
-5. **Embeddings via API instead of local model.** Keeps the image slim;
-   rejected as default because it adds a paid dependency and a network hop to
-   every question (including ones that end in $0 refusals). The adapter
-   already supports it via env — this is the documented fallback if the
-   torch image proves too heavy for the deploy target (ADR-004).
+5. **Embeddings via API instead of a local model.** Keeps the image slim;
+   rejected as the default because it puts a network call on *every*
+   question — including the ones the relevance gate refuses for $0, since
+   the gate needs the query vector before it can decide. Still available via
+   `EMBEDDING_PROVIDER=openai` for deployments that would rather not ship a
+   model at all.
+6. **Local embeddings via `sentence-transformers` (torch).** The conventional
+   choice, and what this service shipped first. Replaced after measuring:
+   torch dragged in the CUDA build on Linux (image **6.39 GB**; CPU-only
+   wheels still left **3.2 GB**), broke the build outright under
+   `UV_COMPILE_BYTECODE` (60 s/file limit hit on torch's generated test
+   modules), and embedded a query in ~220 ms on CPU. ONNX Runtime via
+   `fastembed` runs the *same* bge-small weights — verified equivalent at
+   cosine 0.999999, max elementwise delta 0.00045, and the golden-set
+   retrieval scores are identical to three decimals, so the tuned thresholds
+   carried over unchanged. Result: **13 ms** mean query embedding (16× faster,
+   and now inside the SPEC §9 budget it previously missed), 57 dependencies
+   instead of 86.
 
 ## Consequences
 
