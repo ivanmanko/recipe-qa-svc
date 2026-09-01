@@ -10,6 +10,9 @@ dependencies = [
     "pydantic-settings>=2.14.2,<3",
     "openai>=2.45.0,<3",
     "sentence-transformers>=5.6.0,<6",
+    # Declared explicitly (though it arrives via sentence-transformers) so the
+    # CPU-only index below applies — tool.uv.sources binds direct deps only.
+    "torch>=2.13,<3",
     "tenacity>=9.1.4,<10",
     "rank-bm25>=0.2.2,<0.3",
     "numpy>=2,<3",
@@ -23,6 +26,18 @@ dev = [
     "pyyaml>=6.0.3",
     "ruff>=0.15.21,<0.16",
 ]
+
+# sentence-transformers pulls torch, which on Linux defaults to the CUDA build
+# (~2.5 GB of nvidia libraries). This service embeds on CPU only, so the image
+# takes the CPU wheels instead — measured: 6.39 GB -> see README. macOS keeps
+# the default index, where torch is CPU-only anyway.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
 
 [build-system]
 requires = ["hatchling"]
