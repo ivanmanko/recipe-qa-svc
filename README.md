@@ -274,6 +274,13 @@ Resuming is the same call with `{"instances":1}` and takes about a minute —
 no rebuild, since the image is already there. Running continuously costs
 $5.41/month; the whole build-and-verify cycle above cost under a dollar.
 
+Pausing has one consequence for CI: the `verify-deploy` job would sit waiting
+for a service nobody is running. It is therefore gated on the repository
+variable `PROD_PAUSED`, which is set to `true` while the service is down and
+back to `false` when it is up. The gate is explicit rather than inferred, so
+a genuinely broken deployment still fails the pipeline instead of being
+mistaken for a paused one.
+
 **Secrets** live only in the environment: `LLM_API_KEY` is passed as a
 template argument at run time into a Northflank secret group, and as a GitHub
 Actions secret for CI. The repository contains `.env.example` only; `.env` is

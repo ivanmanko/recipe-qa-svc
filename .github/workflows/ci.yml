@@ -32,8 +32,14 @@ jobs:
   # Deployment itself is git-driven: Northflank builds and deploys every push
   # to main (see northflank-template.json). This job verifies the deployment:
   # wait until /health responds, then run the full eval harness against prod.
+  # Skipped while the service is intentionally scaled to zero between review
+  # sessions (repository variable PROD_PAUSED=true) — otherwise every commit
+  # would spend 20 minutes waiting for a service nobody is paying to run.
+  # Set PROD_PAUSED=false when the deployment is up and this gate applies again.
   verify-deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && vars.PROD_PAUSED != 'true'
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     steps:
