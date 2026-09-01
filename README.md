@@ -261,6 +261,19 @@ corpus ships inside the image. A second run of the same revision converges to
 the same state instead of duplicating resources. Re-running the template with
 `concurrencyPolicy: queue` serializes overlapping runs.
 
+**Pausing and resuming.** Compute is billed per second, so the service is
+scaled to zero between review sessions. Nothing is lost by doing so — the
+only state is the built image, billed at $0.08/GB/month (≈ $0.08 for this
+1.05 GB image):
+
+```bash
+curl -X POST -H "Authorization: Bearer $NF_TOKEN" -H "Content-Type: application/json" -d '{"instances":0}' https://api.northflank.com/v1/projects/recipe-qa/services/recipe-qa-svc/scale
+```
+
+Resuming is the same call with `{"instances":1}` and takes about a minute —
+no rebuild, since the image is already there. Running continuously costs
+$5.41/month; the whole build-and-verify cycle above cost under a dollar.
+
 **Secrets** live only in the environment: `LLM_API_KEY` is passed as a
 template argument at run time into a Northflank secret group, and as a GitHub
 Actions secret for CI. The repository contains `.env.example` only; `.env` is
