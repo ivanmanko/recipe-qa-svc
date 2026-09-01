@@ -20,12 +20,36 @@ tests → lint → build → deploy → smoke check on `/health` → eval run ag
 prod. Reviewers get container-level access via an invitation to the
 Northflank project (roles supported) — recorded in README.
 
-Resource sizing: the image (1.05 GB) carries ONNX Runtime with the embedding
-model baked in → plan with ≥ 2 GB RAM. Chosen: `nf-compute-100-2`
-(1 vCPU / 2 GB, **$24/month**, cheapest plan clearing the RAM requirement;
-prices read from Northflank's pricing page 2026-09-01), build plan
-`nf-compute-400-16`. Infrastructure dominates the bill below ~20k
-questions/month, where LLM spend is ~$1 per 1,000 questions (ADR-002).
+Resource sizing — **revised once, after measurement** (see below). Deployed
+plan: `nf-compute-20` (0.2 vCPU / 512 MB, **$5.41/month**), build plan
+`nf-compute-800-8`, both as committed in `northflank-template.json`. Prices
+read from Northflank's pricing page 2026-09-01. Infrastructure dominates the
+bill below ~5,300 questions/month, where LLM spend is ~$1 per 1,000
+questions (ADR-002).
+
+### Revision: 2 GB → 512 MB
+
+This ADR originally specified `nf-compute-100-2` (1 vCPU / 2 GB, $24/month)
+on the assumption that the image needed ≥ 2 GB of RAM. That assumption was
+wrong in an instructive way, and the deploy is what proved it.
+
+The first deployment on 512 MB was OOM-killed at startup (exit 137) — but the
+cause was not the model's size. Two things were making memory usage far
+larger than the work required: embedding the whole corpus in a single batch
+peaked at 1381 MB, and ONNX Runtime sized its thread pool from the *host's*
+core count rather than the container's CPU limit, with a separate allocation
+arena per thread. Bounding the batch to 4 and pinning `EMBEDDING_THREADS=1`
+brought the peak to 345 MB, verified under a hard 512 MB limit with the full
+golden set passing.
+
+The rule this follows: fix the cause, then size the plan to the measurement.
+Buying a $24 plan would have hidden a real bug — and the bug would have
+resurfaced on any host with more cores.
+
+Build plans deserve a separate note: Northflank's smallest *build* plan is
+8 vCPU, and every build plan exceeds the free Developer Sandbox allowance.
+The free tier therefore cannot host this service at all — not because of the
+application, but because it cannot build it.
 
 ## Alternatives considered
 
