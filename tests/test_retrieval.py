@@ -139,11 +139,14 @@ class TestRetrieve:
         assert ids == ["lentil-soup"]
 
     @pytest.mark.asyncio
-    async def test_filters_can_empty_the_result(self):
+    async def test_filters_can_empty_the_result_but_gate_is_unfiltered(self):
         index = await build_index()
         result = await index.retrieve("dessert", Constraints(diet="vegan", max_time_minutes=10))
         assert result.candidates == []
-        assert not result.threshold_passed
+        # the gate measures domain relevance corpus-wide, independent of
+        # filters; the pipeline turns the empty candidate set into
+        # out_of_corpus (SPEC §4 stage 5)
+        assert result.threshold_passed
 
     @pytest.mark.asyncio
     async def test_threshold_blocks_weak_matches(self):

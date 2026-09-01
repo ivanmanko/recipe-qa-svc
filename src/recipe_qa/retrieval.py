@@ -98,13 +98,17 @@ class RecipeIndex:
         eligible.sort(key=lambda c: c.fused_score, reverse=True)
         candidates = eligible[: self._settings.retrieval_top_k]
 
-        # Relevance gate on RAW signals: RRF-fused scores are rank-based and
-        # query-independent in scale, so a threshold on them can never detect
-        # an out-of-corpus question — cosine and BM25 magnitudes can.
-        top = candidates[0] if candidates else None
-        threshold_passed = top is not None and (
-            top.vector_score >= self._settings.vector_score_threshold
-            or top.bm25_score >= self._settings.bm25_score_threshold
+        # Relevance gate on RAW signals over the UNFILTERED corpus: the gate
+        # answers "is this question about our food domain at all", so it must
+        # not depend on constraint filters (a "vegetarian under 30 minutes"
+        # question scores lower against its few eligible recipes than against
+        # the corpus-wide best match — measured in evals/tune_thresholds.py).
+        # Raw scores, not RRF-fused: RRF is rank-based, its scale is
+        # query-independent and carries no relevance signal. An emptied
+        # candidate set is reported separately (pipeline → out_of_corpus).
+        threshold_passed = len(self._recipes) > 0 and (
+            float(vector_scores.max()) >= self._settings.vector_score_threshold
+            or float(bm25_scores.max()) >= self._settings.bm25_score_threshold
         )
         return RetrievalResult(candidates=candidates, threshold_passed=threshold_passed)
 

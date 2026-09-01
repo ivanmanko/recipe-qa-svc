@@ -178,11 +178,13 @@ satisfy the constraints — the harness asserts this.
 
 Everything a developer would otherwise decide silently in code:
 
-1. **Relevance gate:** the question proceeds to generation only if the best
-   eligible candidate clears at least one **raw-signal** threshold:
-   embedding cosine ≥ `vector_score_threshold = 0.57` OR BM25 ≥
-   `bm25_score_threshold = 10.0` (values live in `config.py`; this line
-   mirrors them). RRF-fused scores are deliberately *not* used: they are
+1. **Relevance gate:** the question proceeds only if the best **corpus-wide**
+   match (before constraint filtering — the gate measures whether the
+   question is about our food domain at all, which must not depend on how
+   many recipes satisfy a time/diet filter) clears at least one
+   **raw-signal** threshold: embedding cosine ≥ `vector_score_threshold =
+   0.57` OR BM25 ≥ `bm25_score_threshold = 10.0` (values live in
+   `config.py`; this line mirrors them). RRF-fused scores are deliberately *not* used: they are
    rank-based, so their scale is identical for every query and carries no
    relevance signal. Tuned on the golden set (`evals/tune_thresholds.py`,
    bge-small-en-v1.5 over the committed corpus): answerable questions
