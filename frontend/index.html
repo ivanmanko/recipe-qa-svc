@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recipe Q&A</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Recipe Q&amp;A</h1>
+      <p class="hint">
+        Ask about the recipes in this corpus, e.g. “What's a vegetarian dinner
+        I can make in under 30 minutes?”
+      </p>
+      <form id="ask-form">
+        <input
+          id="question"
+          name="question"
+          type="text"
+          maxlength="500"
+          placeholder="How do I make carbonara?"
+          autocomplete="off"
+          required
+        />
+        <button id="submit" type="submit">Ask</button>
+      </form>
+      <section id="result" hidden></section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
