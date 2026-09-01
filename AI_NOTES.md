@@ -103,6 +103,24 @@ the real API output and the corpus statistics, then locked down with tests.
 failed on the first question. I made it fail fast at startup instead: a
 misconfigured container should never accept traffic.
 
+**Torch, removed after measuring.** The plan said `sentence-transformers` for
+local embeddings, and the agent implemented it — the conventional choice.
+Building the image is what exposed the cost: **6.39 GB**, because torch on
+Linux defaults to the CUDA build, plus an outright build failure under
+`UV_COMPILE_BYTECODE` (uv's 60 s/file limit, hit on torch's generated test
+modules). CPU-only wheels got it to 3.2 GB, which was still absurd for a
+service that computes one 384-dim vector per request. Swapping to ONNX
+Runtime via `fastembed` — same `bge-small-en-v1.5` weights — landed at
+**1.05 GB** and cut query embedding from 220 ms to 13 ms, which incidentally
+brought retrieval back inside the SPEC §9 budget it had been missing. I
+verified vector equivalence (cosine 0.999999, max delta 0.00045) *before*
+swapping, precisely so the tuned relevance thresholds would not silently
+shift; re-running the threshold script confirmed identical scores to three
+decimals, and the golden set stayed 15/15. The lesson I would repeat: the
+dependency an agent reaches for by default is the one worth measuring, and
+"same weights, different runtime" is a change you must prove rather than
+assume.
+
 ## Where I stopped the agent
 
 Adding a payment method to the Northflank account, and passkey-confirming the

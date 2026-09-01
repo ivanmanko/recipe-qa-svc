@@ -67,8 +67,8 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
 4. **Lexical-only (BM25) retrieval.** Cheapest; rejected because paraphrase
    questions ("dinner idea without meat") share almost no vocabulary with
    recipe pages. Hybrid keeps BM25's exact-name strength and covers
-   paraphrase — at the price of torch + the model in the image, which we
-   accept. Measured effect on the gate: raw BM25 alone would not separate the
+   paraphrase — at the price of shipping an embedding model in the image
+   (~350 MB of the 1.05 GB total), which we accept. Measured effect on the gate: raw BM25 alone would not separate the
    golden set's constrained questions (BM25 4.9–9.99) from non-food ones
    (3.4–8.65), while cosine does (0.626+ vs ≤ 0.525) — the two signals are
    complementary, which is why the gate accepts either.

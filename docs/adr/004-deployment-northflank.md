@@ -20,8 +20,8 @@ tests → lint → build → deploy → smoke check on `/health` → eval run ag
 prod. Reviewers get container-level access via an invitation to the
 Northflank project (roles supported) — recorded in README.
 
-Resource sizing: the image carries torch + sentence-transformers with the
-embedding model baked in → plan with ≥ 2 GB RAM. Chosen: `nf-compute-100-2`
+Resource sizing: the image (1.05 GB) carries ONNX Runtime with the embedding
+model baked in → plan with ≥ 2 GB RAM. Chosen: `nf-compute-100-2`
 (1 vCPU / 2 GB, **$24/month**, cheapest plan clearing the RAM requirement;
 prices read from Northflank's pricing page 2026-09-01), build plan
 `nf-compute-400-16`. Infrastructure dominates the bill below ~20k
@@ -38,10 +38,11 @@ questions/month, where LLM spend is ~$1 per 1,000 questions (ADR-002).
    the directions named by the recruiter, and Northflank's project-level
    dashboard access maps directly onto the "container-level visibility"
    requirement.
-3. **Serverless (Lambda/Cloud Run).** Cold starts with a ~2 GB torch image
-   are seconds-long and RAM-hungry; the always-on container is simpler and
-   fits the latency budget. (Cloud Run min-instances would work but is AWS/
-   Northflank-adjacent to the named direction anyway.)
+3. **Serverless (Lambda/Cloud Run).** Cold starts have to load the embedding
+   model before the first answer; the always-on container avoids paying that
+   per scale-from-zero, and the assignment's latency budget is already spent
+   on the LLM call. Worth revisiting now that the image is 1.05 GB rather
+   than multi-GB — the original objection was mostly about image weight.
 
 ## Consequences
 

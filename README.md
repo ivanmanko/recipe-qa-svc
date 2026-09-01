@@ -14,8 +14,9 @@ the eval harness asserts against. Decisions and their trade-offs are in
 |---|---|
 | Deployed UI + API | ⚠️ see [Deployment](#deployment) — blocked on a Northflank payment method |
 | Container-level access | Northflank project dashboard (see [Deployment](#deployment)) |
-| Eval status | **15/15** golden-set questions pass ([latest report](evals/reports/local-deepseek.json)) |
-| Tests | 62 unit tests, no LLM or network required |
+| Eval status | **15/15**, run against the built container image ([report](evals/reports/docker-onnx.json)) |
+| Tests | 64 unit tests, no LLM or network required |
+| Image | 1.05 GB, `docker run` verified end to end |
 
 ## What it does
 
@@ -200,10 +201,19 @@ image measured **6.39 GB**, because `sentence-transformers` pulls `torch`,
 which on Linux defaults to the CUDA build — ~2.5 GB of nvidia libraries for a
 service that computes one 384-dim vector per request on CPU. It also failed
 the build outright under `UV_COMPILE_BYTECODE=1` (uv's 60 s/file limit, hit on
-torch's generated test modules). Pinning CPU-only wheels got it to 3.2 GB;
-dropping torch for ONNX Runtime (`fastembed`, same weights) is what actually
-fixed it. See [ADR-002](docs/adr/002-retrieval-and-generation.md) for the
-equivalence check and the numbers.
+torch's generated test modules).
+
+| | Image | Retrieval |
+|---|---|---|
+| `sentence-transformers` + CUDA torch | 6.39 GB | 220 ms — build failed on bytecode |
+| CPU-only torch wheels | 3.2 GB | 220 ms |
+| **ONNX Runtime (`fastembed`)** | **1.05 GB** | **13 ms** |
+
+Same `bge-small-en-v1.5` weights throughout — the ONNX vectors were verified
+equivalent to the torch ones at cosine 0.999999 before the swap, so the tuned
+relevance thresholds carried over untouched and the golden set still passes
+15/15 against the built image.
+[ADR-002](docs/adr/002-retrieval-and-generation.md) has the full comparison.
 
 **Why Northflank.** AWS with Terraform would have consumed 2–3 hours of the
 budget on ECS/IAM/ALB plumbing. Northflank gives git-driven container deploys,
@@ -276,7 +286,7 @@ Deliberately not built, with what closing each gap would take:
 | **Corpus updates without redeploy** | The corpus is baked into the image. Live updates need external storage and index rebuild-on-change — see the revisit conditions in ADR-002. |
 | **Multi-language** | Corpus, prompts, and the constraint parser are English-only (declared in SPEC §7.8). Non-English questions typically refuse as out-of-domain. |
 | **p95 < 4 s latency target** | Missed and documented above, with the optimization order. |
-| **Load/soak testing** | Never run under concurrency. The service is stateless so it scales horizontally, but the per-process torch lock (`_local_model_lock.py`) serializes query embedding and is the first thing I would measure under load. |
+| **Load/soak testing** | Never run under concurrency. The service is stateless so it scales horizontally, and query embedding now runs on thread-safe ONNX Runtime rather than behind a process-wide lock — but that is reasoning, not a measurement, and concurrent throughput is the first thing I would actually test. |
 | **Frontend tests** | The UI is ~120 lines of TypeScript verified by hand across all three states. The API contract it depends on is covered by backend tests. |
 
 This is not production-grade in the sense of a service with real users behind
