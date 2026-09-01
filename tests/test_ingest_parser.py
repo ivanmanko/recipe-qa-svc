@@ -149,6 +149,17 @@ class TestParseRecipePage:
         assert "Some citation" not in recipe.text
         assert "{{" not in recipe.text
 
+    def test_ingredient_subsections_belong_to_ingredients(self):
+        page = (
+            "==Ingredients==\n=== Broth ===\n* 2 [[Cookbook:Bone|bones]]\n"
+            "=== Noodles ===\n* 200 g noodles\n==Procedure==\n# Simmer.\n"
+        )
+        recipe = parse_recipe_page(
+            title="Cookbook:Ramen", url="https://example.org/r", wikitext=page, categories=[]
+        )
+        assert recipe.ingredients == ["2 bones", "200 g noodles"]
+        assert recipe.steps == ["Simmer."]
+
     def test_page_without_time_or_sections(self):
         recipe = parse_recipe_page(
             title="Cookbook:Mystery Dish",

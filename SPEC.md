@@ -193,7 +193,8 @@ Everything a developer would otherwise decide silently in code:
    bound; unparseable → `null`.
 5. **Diet tags from recipe pages:** derived from Wikibooks category
    membership (e.g. "Vegan recipes", "Vegetarian recipes") plus
-   gluten-free category if present. No inference from ingredient analysis.
+   gluten-free category if present. Vegan implies vegetarian. No inference
+   from ingredient analysis.
 6. **Allergen flags:** substring match of ingredient names against a fixed
    allergen vocabulary (nuts, peanuts, dairy/milk, eggs, gluten/wheat, soy,
    fish, shellfish, sesame). Used only to enrich safety answers — never to
@@ -213,6 +214,8 @@ Everything a developer would otherwise decide silently in code:
 12. **LLM failure** (timeout after retries / invalid output): HTTP 503 with
     `{"detail": "generation_unavailable"}` — an operational error is not a
     refusal and must not be disguised as one.
+13. **Ingest skips Cookbook pages without a parseable Ingredients section** —
+    those are meta/navigation pages (cuisines, techniques), not recipes.
 
 ## 8. Observability
 
