@@ -22,6 +22,11 @@ async def _lifespan(app: FastAPI):
     # startup; production builds the real one from the corpus file.
     if getattr(app.state, "pipeline", None) is None:
         settings = get_settings()
+        if not settings.llm_api_key:
+            raise RuntimeError(
+                "LLM_API_KEY is not set — the service refuses to start "
+                "misconfigured (fail-fast; see .env.example)"
+            )
         corpus_file = Path(settings.corpus_path)
         recipes = (
             [Recipe(**item) for item in json.loads(corpus_file.read_text())]
