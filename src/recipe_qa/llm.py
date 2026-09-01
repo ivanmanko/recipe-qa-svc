@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Protocol
 
 from openai import AsyncOpenAI
@@ -6,8 +7,17 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ra
 from recipe_qa.config import Settings
 
 
+@dataclass
+class Completion:
+    """Content plus the token counts the cost model is built on (SPEC §8)."""
+
+    content: str
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+
+
 class LLMClient(Protocol):
-    async def complete(self, messages: list[dict[str, str]], **params) -> str: ...
+    async def complete(self, messages: list[dict[str, str]], **params) -> Completion: ...
 
 
 class OpenAILLMClient:
@@ -31,8 +41,13 @@ class OpenAILLMClient:
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type(Exception),
     )
-    async def complete(self, messages: list[dict[str, str]], **params) -> str:
+    async def complete(self, messages: list[dict[str, str]], **params) -> Completion:
         response = await self._client.chat.completions.create(
             model=self._model, messages=messages, **params
         )
-        return response.choices[0].message.content or ""
+        usage = response.usage
+        return Completion(
+            content=response.choices[0].message.content or "",
+            prompt_tokens=usage.prompt_tokens if usage else None,
+            completion_tokens=usage.completion_tokens if usage else None,
+        )

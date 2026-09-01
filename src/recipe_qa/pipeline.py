@@ -151,8 +151,12 @@ class Pipeline:
         last_exc: Exception | None = None
         for _attempt in range(2):
             try:
-                raw = await self._llm.complete(messages, response_format=fmt, temperature=0)
-                parsed = generation.parse_answer(raw)
+                completion = await self._llm.complete(
+                    messages, response_format=fmt, temperature=0
+                )
+                parsed = generation.parse_answer(completion.content)
+                log["prompt_tokens"] = completion.prompt_tokens
+                log["completion_tokens"] = completion.completion_tokens
                 break
             except Exception as exc:  # noqa: BLE001 — anything here means "no usable answer"
                 last_exc = exc

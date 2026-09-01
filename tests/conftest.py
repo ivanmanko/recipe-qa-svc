@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from recipe_qa.app import create_app
 from recipe_qa.config import Settings
+from recipe_qa.llm import Completion
 from recipe_qa.models import Recipe
 from recipe_qa.pipeline import Pipeline
 from recipe_qa.retrieval import RecipeIndex
@@ -29,11 +30,13 @@ class MockLLM:
         self.error = error
         self.calls: list = []
 
-    async def complete(self, messages, **params):
+    async def complete(self, messages, **params) -> Completion:
         self.calls.append((messages, params))
         if self.error is not None:
             raise self.error
-        return self.responses.pop(0)
+        return Completion(
+            content=self.responses.pop(0), prompt_tokens=1234, completion_tokens=56
+        )
 
 
 def llm_json(answer=None, citation_ids=(), refused=False, refusal_reason=None) -> str:
