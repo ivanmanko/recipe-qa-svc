@@ -104,11 +104,14 @@ Stages run in order; the first stage that produces a response wins.
 1. **Validation** — §3.1; may end with 422.
 2. **Safety gate** (deterministic, before retrieval): if the question matches
    the safety trigger list (§7.3) → `refused: true, refusal_reason: "safety"`.
-   Retrieval still runs to find the recipes the question refers to; `answer`
-   contains their ingredient lists verbatim plus a fixed disclaimer that an
-   open wiki corpus cannot establish allergen safety (traces, contamination,
-   incomplete data). The service **never confirms** that a recipe is free of
-   an allergen or safe for a condition.
+   Retrieval still runs to find the recipes the question refers to, but
+   **constraint extraction is skipped** — phrasings like "a dessert without
+   nuts, I'm allergic" would otherwise be parsed as an ingredient exclusion
+   and filter away the very recipes whose ingredients the answer must show. `answer` contains the ingredient lists of the cited recipes
+   verbatim (only those clearing the §7.1 thresholds, capped at 3) plus a
+   fixed disclaimer that an open wiki corpus cannot establish allergen
+   safety (traces, contamination, incomplete data). The service **never
+   confirms** that a recipe is free of an allergen or safe for a condition.
 3. **Constraint extraction** (deterministic parser, §7.2): produces
    `max_time_minutes`, `diet`, `exclude_ingredients[]`.
 4. **Retrieval:** hybrid BM25 + embedding similarity over whole recipes,
@@ -116,16 +119,17 @@ Stages run in order; the first stage that produces a response wins.
    (see §7.7 for unknown-metadata semantics). Top 5 recipes survive.
 5. **Relevance gate:** if the constraint filters emptied the candidate set →
    `refused: true, refusal_reason: "out_of_corpus"` (the corpus has nothing
-   satisfying the request). Otherwise, if the best eligible candidate clears
-   no raw-signal threshold (§7.1) → `refused: true, refusal_reason:
-   "out_of_domain"`. **No LLM call is made in either case** — these refusals
+   satisfying the request). Otherwise, if the best **corpus-wide** match
+   (computed before constraint filtering, §7.1) clears no raw-signal
+   threshold → `refused: true, refusal_reason: "out_of_domain"`. **No LLM call is made in either case** — these refusals
    cost $0. Measured rationale (§7.1): non-food questions score far below
    every answerable question, while food questions about *absent* dishes
    score as high as answerable ones — so the gate detects "not about food",
    and dish-level absence is decided in stage 6 by the model, which sees
    that the retrieved recipes do not answer the question.
-6. **Generation:** exactly **one** LLM call per question, structured output
-   conforming to the `AskResponse`-derived schema. The prompt contains only
+6. **Generation:** **one** LLM call per question (plus at most one retry when
+   the output fails schema validation, §7.12), structured output conforming
+   to the `AskResponse`-derived schema. The prompt contains only
    the retrieved recipes and instructs the model to answer strictly from
    them. The model may itself refuse: `out_of_corpus` if the retrieved
    recipes don't actually answer the question, `out_of_domain` if the
@@ -192,13 +196,21 @@ Everything a developer would otherwise decide silently in code:
    questions ≤ 0.525 / ≤ 8.7; food questions about absent dishes 0.669–0.750
    — indistinguishable from answerable, hence the gate's refusal reason is
    `out_of_domain`, not `out_of_corpus` (§4 stage 5).
-2. **Constraint parser:** regex + vocabulary, English only.
-   - Time: "under/in/within/less than N minutes|hours", "N-minute";
-     "quick"/"fast" map to `max_time_minutes = 30`.
-   - Diet vocabulary: vegetarian, vegan, gluten-free (aliases recorded in the
-     parser module as the authoritative list).
-   - Exclusions: "without X", "no X", "X-free" — **except** when X is an
-     allergen term, which routes to the safety gate instead.
+2. **Constraint parser:** regex + vocabulary, English only. Runs only when
+   the safety gate did *not* fire (§4 stage 2).
+   - Time: "under/within/in/less than/at most/no more than N minutes|hours",
+     "N-minute"; "quick"/"fast"/"speedy" and "half an hour" map to
+     `max_time_minutes = 30`.
+   - Diet vocabulary: vegetarian (also "veggie", "meatless"), vegan,
+     gluten-free. `DIET_ALIASES` in the parser module is the authoritative
+     list.
+   - Exclusions: **"without X" and "no X" only**, minus a stopword list
+     ("no more", "no matter", …). A bare "X-free" is deliberately *not* an
+     exclusion pattern: for allergens it is a safety trigger (§7.3), and
+     "gluten-free" is a diet tag — the two cases that actually occur.
+     A non-allergen, non-diet "X-free" (e.g. "sugar-free") is therefore
+     **not** honored as a constraint; recorded as a known gap rather than
+     implemented, since no golden-set question needs it.
 3. **Safety triggers** (case-insensitive word/phrase match): allergy,
    allergic, allergen, nut-free, peanut-free, gluten intolerance/celiac (as
    safety, vs. "gluten-free" as diet preference — the trigger is
