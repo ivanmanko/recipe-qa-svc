@@ -21,10 +21,18 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
 2. **Hard metadata filters** (time / diet / excluded ingredients) applied on
    top of fused ranking, from a deterministic constraint parser (SPEC §7.2).
 3. **Relevance gate before the LLM:** the best eligible candidate must clear
-   a raw-signal threshold (embedding cosine OR BM25) ⇒ otherwise
-   `out_of_corpus` refusal with zero LLM cost (SPEC §4 stage 5). The gate
-   intentionally uses raw scores, not RRF-fused ones: RRF is rank-based, its
-   scale is the same for any query, so it carries no out-of-corpus signal.
+   a raw-signal threshold (cosine ≥ 0.57 OR BM25 ≥ 10.0) ⇒ otherwise an
+   `out_of_domain` refusal with zero LLM cost (SPEC §4 stage 5). Two
+   measured findings shaped this (evals/tune_thresholds.py, real corpus +
+   bge-small):
+   - RRF-fused scores are rank-based — identical scale for every query, no
+     relevance signal — so the gate uses raw scores.
+   - Food questions about dishes *absent* from the corpus score cosine
+     0.669–0.750, inside the answerable range (0.626–0.859), while non-food
+     questions stay ≤ 0.525. A score gate therefore detects "not about
+     food"; dish-level absence is decided by the model in the single
+     generation call, which sees the retrieved recipes. `out_of_corpus`
+     stays $0 only when constraint filters empty the candidate set.
 4. **Generation = one LLM call** with structured output, prompt limited to
    the retrieved recipes. Provider behind an OpenAI-compatible adapter
    (`base_url`/`model`/`key` via env); default `gpt-4o-mini`

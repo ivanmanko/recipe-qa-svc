@@ -65,6 +65,11 @@ def build_client(
 ) -> tuple[TestClient, MockLLM]:
     """App with an injected pipeline: stub embedder, mocked LLM, tiny corpus."""
     llm = llm or MockLLM()
+    # Stub embedder yields zero vectors and the tiny corpora yield small BM25
+    # scores, so the production thresholds would block everything: disable
+    # the gate by default, tests of the gate itself override explicitly.
+    settings_overrides.setdefault("vector_score_threshold", 0.0)
+    settings_overrides.setdefault("bm25_score_threshold", 0.0)
     settings = Settings(llm_api_key="test-key", **settings_overrides)
     index = RecipeIndex(corpus, StubEmbedder(), settings)
     asyncio.run(index.build())

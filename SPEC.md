@@ -114,9 +114,16 @@ Stages run in order; the first stage that produces a response wins.
 4. **Retrieval:** hybrid BM25 + embedding similarity over whole recipes,
    fused with RRF; hard metadata filters apply extracted constraints
    (see §7.7 for unknown-metadata semantics). Top 5 recipes survive.
-5. **Relevance threshold:** if the best fused score is below the threshold θ
-   (§7.1) → `refused: true, refusal_reason: "out_of_corpus"`. **No LLM call
-   is made** — refusals by threshold cost $0.
+5. **Relevance gate:** if the constraint filters emptied the candidate set →
+   `refused: true, refusal_reason: "out_of_corpus"` (the corpus has nothing
+   satisfying the request). Otherwise, if the best eligible candidate clears
+   no raw-signal threshold (§7.1) → `refused: true, refusal_reason:
+   "out_of_domain"`. **No LLM call is made in either case** — these refusals
+   cost $0. Measured rationale (§7.1): non-food questions score far below
+   every answerable question, while food questions about *absent* dishes
+   score as high as answerable ones — so the gate detects "not about food",
+   and dish-level absence is decided in stage 6 by the model, which sees
+   that the retrieved recipes do not answer the question.
 6. **Generation:** exactly **one** LLM call per question, structured output
    conforming to the `AskResponse`-derived schema. The prompt contains only
    the retrieved recipes and instructs the model to answer strictly from
@@ -132,11 +139,11 @@ Stages run in order; the first stage that produces a response wins.
 
 ### Refusal reason semantics
 
-| Reason | Meaning |
-|---|---|
-| `out_of_corpus` | The question is about food/cooking, but the corpus has no recipe that answers it (or none passes the constraints/threshold). |
-| `out_of_domain` | The question is not about food, cooking, or recipes. |
-| `safety` | The question asks for an allergy/safety judgment (§7.3). Policy: never assert safety; return ingredients + disclaimer. |
+| Reason | Meaning | Decided by |
+|---|---|---|
+| `out_of_corpus` | The question is about food/cooking, but the corpus has no recipe that answers it (or none passes the constraints). | Filters emptying the candidates (stage 5, $0) or the model seeing the retrieved recipes don't answer (stage 6, one LLM call) |
+| `out_of_domain` | The question is not about food, cooking, or recipes. | Relevance gate (stage 5, $0) or the model (stage 6) |
+| `safety` | The question asks for an allergy/safety judgment (§7.3). Policy: never assert safety; return ingredients + disclaimer. | Trigger list (stage 2, $0) |
 
 ## 5. Constraint handling
 
@@ -171,14 +178,18 @@ satisfy the constraints — the harness asserts this.
 
 Everything a developer would otherwise decide silently in code:
 
-1. **Relevance gate:** the question is answerable only if the best eligible
-   candidate clears at least one **raw-signal** threshold: embedding cosine
-   ≥ `vector_score_threshold` OR BM25 ≥ `bm25_score_threshold`. RRF-fused
-   scores are deliberately *not* used here: they are rank-based, so their
-   scale is identical for every query and cannot signal out-of-corpus.
-   Values are tuned on the golden set before submission and recorded here:
-   `vector = TBD`, `bm25 = TBD` *(updated in the tuning commit; the values
-   live in `config.py`, this line mirrors them)*.
+1. **Relevance gate:** the question proceeds to generation only if the best
+   eligible candidate clears at least one **raw-signal** threshold:
+   embedding cosine ≥ `vector_score_threshold = 0.57` OR BM25 ≥
+   `bm25_score_threshold = 10.0` (values live in `config.py`; this line
+   mirrors them). RRF-fused scores are deliberately *not* used: they are
+   rank-based, so their scale is identical for every query and carries no
+   relevance signal. Tuned on the golden set (`evals/tune_thresholds.py`,
+   bge-small-en-v1.5 over the committed corpus): answerable questions
+   scored cosine 0.626–0.859 (exact dish names BM25 12.5–13.4); non-food
+   questions ≤ 0.525 / ≤ 8.7; food questions about absent dishes 0.669–0.750
+   — indistinguishable from answerable, hence the gate's refusal reason is
+   `out_of_domain`, not `out_of_corpus` (§4 stage 5).
 2. **Constraint parser:** regex + vocabulary, English only.
    - Time: "under/in/within/less than N minutes|hours", "N-minute";
      "quick"/"fast" map to `max_time_minutes = 30`.
@@ -239,8 +250,9 @@ in production" (README).
   deployed instance; deterministic refusals < 300 ms. Retrieval itself
   < 100 ms (in-memory, ~50 docs). Measured by the eval harness; actual
   numbers go to README.
-- **Cost:** deterministic branches (threshold refusals, safety, 422) cost $0
-  in LLM fees. Target < $2 per 1,000 questions all-in; computed from measured
+- **Cost:** deterministic branches (gate refusals, empty-candidate refusals,
+  safety, 422) cost $0 in LLM fees; an `out_of_corpus` refusal for an absent
+  dish typically costs one LLM call (§4 stage 6). Target < $2 per 1,000 questions all-in; computed from measured
   token counts × vendor prices verified on the vendor's pricing page at
   README write time (source + date cited there).
 - **Availability:** single stateless instance, best-effort; horizontal

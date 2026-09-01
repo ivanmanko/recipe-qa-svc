@@ -87,14 +87,16 @@ class TestSafetyGate:
 
 
 class TestRelevanceGate:
-    def test_below_threshold_refuses_out_of_corpus_without_llm(self):
+    def test_below_threshold_refuses_out_of_domain_without_llm(self):
+        # SPEC §4 stage 5: sub-threshold means "not even food-shaped";
+        # dish-level absence is the model's call, not the gate's.
         client, llm = build_client(
             vector_score_threshold=999.0, bm25_score_threshold=999.0
         )
-        body = client.post("/ask", json={"question": "how do I make sushi?"}).json()
+        body = client.post("/ask", json={"question": "what is the capital of France?"}).json()
         assert_invariants(body)
         assert body["refused"] is True
-        assert body["refusal_reason"] == "out_of_corpus"
+        assert body["refusal_reason"] == "out_of_domain"
         assert body["citations"] == []
         assert llm.calls == []
 

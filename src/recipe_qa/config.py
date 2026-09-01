@@ -20,12 +20,15 @@ class Settings(BaseSettings):
     # Retrieval — values mirrored in SPEC §7; change them there in the same commit.
     retrieval_top_k: int = 5
     rrf_k: int = 60
-    # Relevance gate (SPEC §7.1): the question is answerable only if the best
-    # eligible candidate clears at least one RAW-signal threshold. RRF-fused
-    # scores are rank-based and identical in scale for any query, so they
-    # cannot detect out-of-corpus; raw cosine / BM25 can. Tuned on golden set.
-    vector_score_threshold: float = 0.0
-    bm25_score_threshold: float = 0.0
+    # Relevance gate (SPEC §7.1): the best eligible candidate must clear at
+    # least one RAW-signal threshold, else the question is refused as
+    # out_of_domain without an LLM call. Raw signals, not RRF-fused ones:
+    # RRF is rank-based and its scale is identical for any query. Values
+    # tuned on the golden set (evals/tune_thresholds.py): non-food questions
+    # score vector <= 0.53 / bm25 <= 8.7, answerable ones >= 0.63 / exact
+    # dish names >= 12.5.
+    vector_score_threshold: float = 0.57
+    bm25_score_threshold: float = 10.0
 
     corpus_path: str = "data/corpus.json"
     static_dir: str = "frontend/dist"

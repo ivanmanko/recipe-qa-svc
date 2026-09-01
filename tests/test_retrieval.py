@@ -74,6 +74,10 @@ def neutral_embedder():
 
 
 async def build_index(embedder=None, **settings_overrides) -> RecipeIndex:
+    # gate disabled by default here (stub embedder gives zero vectors);
+    # gate-specific tests override the thresholds explicitly
+    settings_overrides.setdefault("vector_score_threshold", 0.0)
+    settings_overrides.setdefault("bm25_score_threshold", 0.0)
     settings = Settings(llm_api_key="unused", **settings_overrides)
     index = RecipeIndex(CORPUS, embedder or neutral_embedder(), settings)
     await index.build()

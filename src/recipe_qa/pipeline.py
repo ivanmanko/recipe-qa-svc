@@ -82,8 +82,16 @@ class Pipeline:
         llm_ms = 0
         if safety:
             response = self._safety_response(request_id, result)
-        elif not result.threshold_passed:
+        elif not result.candidates:
+            # constraints emptied the candidate set: the corpus has nothing
+            # satisfying the request (SPEC §5)
             response = self._refusal(request_id, RefusalReason.out_of_corpus)
+        elif not result.threshold_passed:
+            # nothing in the corpus is even food-shaped for this question
+            # (SPEC §7.1: measured scores separate non-food cleanly; food
+            # questions about absent dishes score high and are refused
+            # out_of_corpus by the model in stage 6 instead)
+            response = self._refusal(request_id, RefusalReason.out_of_domain)
         else:
             llm_started = time.perf_counter()
             try:

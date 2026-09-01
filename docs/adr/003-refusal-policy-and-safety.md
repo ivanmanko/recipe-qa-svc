@@ -17,11 +17,12 @@ traces, or cross-contamination.
 1. **Refusal = `refused: true` + closed enum** `refusal_reason ∈
    {out_of_corpus, out_of_domain, safety}` (SPEC §3.1, §4). Polite text also
    appears in `answer` from fixed templates, but carries no contract weight.
-2. **Refusal decisions are deterministic wherever possible:** the relevance
-   threshold (out_of_corpus) and the safety gate fire before any LLM call;
-   only the distinction "retrieved recipes don't actually answer this" /
-   "not about food at all" is delegated to the model, constrained by
-   structured output to the same enum.
+2. **Refusal decisions are deterministic wherever possible:** the safety
+   gate, the relevance gate (out_of_domain) and the empty-after-filters case
+   (out_of_corpus) fire before any LLM call; only "the retrieved recipes
+   don't actually answer this dish-level question" is delegated to the
+   model, constrained by structured output to the same enum (see ADR-002
+   for the measured reason why dish absence cannot be a score threshold).
 3. **Safety policy: never confirm safety.** Questions matching the declared
    trigger list (SPEC §7.3) are answered with `refused: true,
    refusal_reason: "safety"`, citations to the relevant recipes, their
