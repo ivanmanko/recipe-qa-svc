@@ -50,9 +50,12 @@ traces, or cross-contamination.
 - The eval harness can assert refusal behavior exactly (flag + enum), with
   zero LLM calls for threshold/safety cases.
 - The trigger list is a declared constant (SPEC §7.3) — false negatives are
-  possible for unusual phrasings; the generation prompt carries a backstop
-  instruction to route safety-flavored questions to the safety template.
-  TODO: verify backstop wording during implementation.
+  possible for unusual phrasings. Implemented backstop: rule 7 of the
+  generation system prompt instructs the model to refuse any allergy /
+  intolerance / pregnancy safety question as `out_of_corpus` rather than
+  answer it. So a phrasing the trigger list misses degrades to a refusal
+  without an ingredient list, never to a safety assertion. Both layers are
+  exercised by the golden set (`safety-nut-free`, `safety-peanut-allergy`).
 - Some borderline questions ("gluten-free dessert?") are treated as diet
   preference, not safety — the boundary (intolerance/allergy phrasing) is
   declared in SPEC §7.3.

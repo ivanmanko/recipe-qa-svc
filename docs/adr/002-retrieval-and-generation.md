@@ -57,15 +57,21 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
    question, over a candidate pool that metadata filters already shrink to a
    handful. No measurable precision win available at this corpus size.
 3. **Agentic / self-correcting pipeline (LangGraph-style grading loops).**
-   Rejected: ≥7 LLM calls per question vs 1 (7–20× cost and latency —
-   explicit eval criteria), and a runtime LLM judge competes with the
-   offline eval harness the assignment actually asks for. TODO: final
-   measured single-call latency/cost in README.
+   Rejected: ≥7 LLM calls per question vs 1, and a runtime LLM judge competes
+   with the offline eval harness the assignment actually asks for. Measured
+   cost of our single call: **$0.00145** per answered question (2117 input +
+   391 output tokens), **4.2 s mean** generation latency. A 7-call graph
+   would put that at roughly $0.01 and ~30 s per question — untenable against
+   the latency budget, for a 55-recipe corpus where the golden set already
+   passes 15/15 in one call.
 4. **Lexical-only (BM25) retrieval.** Cheapest; rejected because paraphrase
    questions ("dinner idea without meat") share almost no vocabulary with
    recipe pages. Hybrid keeps BM25's exact-name strength and covers
-   paraphrase — at the price of a local embedding model in the image
-   (~size TODO), which we accept.
+   paraphrase — at the price of torch + the model in the image, which we
+   accept. Measured effect on the gate: raw BM25 alone would not separate the
+   golden set's constrained questions (BM25 4.9–9.99) from non-food ones
+   (3.4–8.65), while cosine does (0.626+ vs ≤ 0.525) — the two signals are
+   complementary, which is why the gate accepts either.
 5. **Embeddings via API instead of local model.** Keeps the image slim;
    rejected as default because it adds a paid dependency and a network hop to
    every question (including ones that end in $0 refusals). The adapter
@@ -76,8 +82,15 @@ plus deployment simplicity ("safe to deploy twice", no manual steps).
 
 - Whole service is one stateless container; corpus updates ship as a git
   commit + redeploy.
-- Threshold θ must be tuned on the golden set and declared in SPEC §7.1.
-- Startup pays model-load + index-build once (~seconds; measured → README).
+- Thresholds are tuned on the golden set and declared in SPEC §7.1
+  (`evals/tune_thresholds.py` reproduces the numbers).
+- Startup pays model-load + index-build once (~20 s cold, in the container the
+  model is baked into the image so no download happens at boot).
+- Measured retrieval cost at request time: 220 ms mean, 575 ms max —
+  dominated by embedding the query on CPU, not by the 55×384 matrix scan.
+  This exceeds the < 100 ms retrieval target in SPEC §9 and is recorded as
+  measured; it is ~5% of an LLM-answered request, so it is not the bottleneck
+  worth optimizing first (README).
 
 ## Revisit when
 

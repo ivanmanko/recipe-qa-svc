@@ -20,9 +20,12 @@ tests → lint → build → deploy → smoke check on `/health` → eval run ag
 prod. Reviewers get container-level access via an invitation to the
 Northflank project (roles supported) — recorded in README.
 
-Resource sizing: the image carries torch + sentence-transformers
-(~2–3 GB image, ~1–2 GB RAM at model load) → plan with ≥ 2 GB RAM.
-Exact plan/cost: TODO after first deploy.
+Resource sizing: the image carries torch + sentence-transformers with the
+embedding model baked in → plan with ≥ 2 GB RAM. Chosen: `nf-compute-100-2`
+(1 vCPU / 2 GB, **$24/month**, cheapest plan clearing the RAM requirement;
+prices read from Northflank's pricing page 2026-09-01), build plan
+`nf-compute-400-16`. Infrastructure dominates the bill below ~20k
+questions/month, where LLM spend is ~$1 per 1,000 questions (ADR-002).
 
 ## Alternatives considered
 
@@ -48,9 +51,19 @@ Exact plan/cost: TODO after first deploy.
   fallback is switching embeddings to an API provider via env (ADR-002 alt 5)
   — slim image, no code change.
 - Secrets: Northflank secret groups + GitHub Actions secrets; repo carries
-  `.env.example` only.
-- TODO after implementation: template file format verified against current
-  Northflank docs; deploy duration and plan cost numbers.
+  `.env.example` only. `LLM_API_KEY` enters as a template *argument* at run
+  time, so the committed template holds a placeholder, not a key.
+- Template format verified against the current Northflank API (`apiVersion`
+  v1.2), created and accepted by `POST /v1/templates`; two schema constraints
+  the docs do not spell out were found by the API rejecting the payload:
+  `description` is capped at 200 characters and restricted to a character set
+  that excludes `=`.
+- **Known blocker at time of writing:** the template run fails at resource
+  creation with "Please complete your account by adding a default payment
+  method" — Northflank requires a card on file even for free-tier projects.
+  Every step before that (GitHub app installation scoped to this single
+  repository, template creation, run submission) succeeds. This is an account
+  action, not a code or configuration change.
 
 ## Revisit when
 
