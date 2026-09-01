@@ -55,6 +55,10 @@ class Pipeline:
     def corpus_size(self) -> int:
         return len(self._index.recipes)
 
+    @property
+    def recipes(self) -> list:
+        return self._index.recipes
+
     async def ask(self, question: str) -> AskResponse:
         request_id = str(uuid.uuid4())
         started = time.perf_counter()

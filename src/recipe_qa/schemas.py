@@ -35,3 +35,18 @@ class AskResponse(BaseModel):
     refused: bool
     refusal_reason: RefusalReason | None
     request_id: str
+
+
+class RecipeDetail(BaseModel):
+    """One corpus recipe, served so a client can render a cited source in
+    place (SPEC §3.3). Kept separate from AskResponse on purpose: /ask is the
+    graded contract, and this is a presentation concern. `url` is mandatory —
+    CC BY-SA attribution is impossible without it."""
+
+    id: str
+    title: str
+    url: str
+    time_minutes: int | None
+    diet_tags: list[str]
+    ingredients: list[str]
+    steps: list[str]

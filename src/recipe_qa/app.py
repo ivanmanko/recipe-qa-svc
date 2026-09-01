@@ -12,7 +12,7 @@ from recipe_qa.llm import OpenAILLMClient
 from recipe_qa.models import Recipe
 from recipe_qa.pipeline import GenerationUnavailable, Pipeline
 from recipe_qa.retrieval import RecipeIndex
-from recipe_qa.schemas import AskRequest, AskResponse
+from recipe_qa.schemas import AskRequest, AskResponse, RecipeDetail
 
 
 @asynccontextmanager
@@ -51,6 +51,23 @@ def create_app() -> FastAPI:
             "corpus_size": app.state.pipeline.corpus_size,
             "git_sha": get_settings().git_sha,
         }
+
+    @app.get("/recipes/{recipe_id}", response_model=RecipeDetail)
+    async def recipe(recipe_id: str) -> RecipeDetail:
+        found = next(
+            (r for r in app.state.pipeline.recipes if r.id == recipe_id), None
+        )
+        if found is None:
+            raise HTTPException(status_code=404, detail="recipe_not_found")
+        return RecipeDetail(
+            id=found.id,
+            title=found.title,
+            url=found.url,
+            time_minutes=found.time_minutes,
+            diet_tags=found.diet_tags,
+            ingredients=found.ingredients,
+            steps=found.steps,
+        )
 
     @app.post("/ask", response_model=AskResponse)
     async def ask(request: AskRequest, response: Response) -> AskResponse:
