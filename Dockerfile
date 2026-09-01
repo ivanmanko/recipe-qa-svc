@@ -28,5 +28,10 @@ RUN uv run --no-sync python -c "from fastembed import TextEmbedding; TextEmbeddi
 
 COPY --from=frontend /build/dist frontend/dist
 
+# Northflank passes the built commit as a build argument; /health reports it so
+# a deploy check can wait for this exact revision.
+ARG NF_GIT_SHA=unknown
+ENV GIT_SHA=$NF_GIT_SHA
+
 EXPOSE 8000
 CMD ["uv", "run", "--no-sync", "uvicorn", "recipe_qa.app:app", "--host", "0.0.0.0", "--port", "8000"]

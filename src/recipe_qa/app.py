@@ -46,7 +46,11 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict:
-        return {"status": "ok", "corpus_size": app.state.pipeline.corpus_size}
+        return {
+            "status": "ok",
+            "corpus_size": app.state.pipeline.corpus_size,
+            "git_sha": get_settings().git_sha,
+        }
 
     @app.post("/ask", response_model=AskResponse)
     async def ask(request: AskRequest, response: Response) -> AskResponse:

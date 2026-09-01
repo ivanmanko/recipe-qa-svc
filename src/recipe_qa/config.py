@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     vector_score_threshold: float = 0.57
     bm25_score_threshold: float = 10.0
 
+    # Commit the image was built from, baked in at build time. /health reports
+    # it so a deploy check can wait for *this* revision rather than for "some
+    # container is answering" — without it, CI raced the rolling replacement
+    # and ran its evals against the outgoing container.
+    git_sha: str = "unknown"
+
     corpus_path: str = "data/corpus.json"
     static_dir: str = "frontend/dist"
     max_question_length: int = 500

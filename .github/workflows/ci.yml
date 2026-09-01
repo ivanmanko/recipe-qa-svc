@@ -40,7 +40,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --frozen
-      - name: Smoke check /health (waits for Northflank rollout)
+      # Waits for THIS commit to be serving, not merely for a healthy
+      # response: Northflank rolls the new container in while the old one is
+      # still answering, and evals run against the outgoing container would
+      # fail halfway through the rollout (observed).
+      - name: Wait for this revision to be live
         env:
           PROD_URL: ${{ secrets.PROD_URL }}
         run: |
@@ -48,12 +52,17 @@ jobs:
             echo "::warning::PROD_URL secret not set — deploy verification skipped"
             exit 0
           fi
-          for i in $(seq 1 90); do
-            if curl -fsS "$PROD_URL/health"; then exit 0; fi
-            echo "waiting for deployment ($i/90)..."
+          for i in $(seq 1 120); do
+            LIVE=$(curl -fsS --max-time 10 "$PROD_URL/health" 2>/dev/null \
+              | python3 -c "import json,sys; print(json.load(sys.stdin).get('git_sha',''))" 2>/dev/null || true)
+            if [ "$LIVE" = "$GITHUB_SHA" ]; then
+              echo "revision $GITHUB_SHA is live"
+              exit 0
+            fi
+            echo "waiting for $GITHUB_SHA (serving: ${LIVE:-none}) [$i/120]"
             sleep 10
           done
-          echo "service did not become healthy in 15 minutes" >&2
+          echo "revision $GITHUB_SHA did not go live within 20 minutes" >&2
           exit 1
       - name: Run eval harness against production
         env:
