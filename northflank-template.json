@@ -1,7 +1,7 @@
 {
   "apiVersion": "v1.2",
   "name": "recipe-qa-svc",
-  "description": "Recipe Q&A service: one combined service built from the repo Dockerfile. Push to main = build + deploy (git-driven, no manual steps). LLM_API_KEY is supplied as a template argument at run time and stored in a Northflank secret group - never in the repo.",
+  "description": "Recipe Q&A service: combined service built from the repo Dockerfile. A push to main triggers build and deploy. LLM API key comes in as a template argument, stored in a secret group.",
   "arguments": {
     "GITHUB_REPO_URL": "https://github.com/ivanmanko/recipe-qa-svc",
     "LLM_API_KEY": "SET_AT_TEMPLATE_RUN"
