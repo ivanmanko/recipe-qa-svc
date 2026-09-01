@@ -242,18 +242,22 @@ Everything a developer would otherwise decide silently in code:
    instead of confirming them. `tune_thresholds.py` prints the separation
    margin, so the numbers below stay checkable rather than quoted:
 
-   | Tuning-set group | Cosine | BM25 |
+   | Tuning-set group (n) | Cosine | BM25 max |
    |---|---|---|
-   | Answerable | see script output | see script output |
-   | Not about food | see script output | see script output |
+   | Answerable (10) | 0.649 – 0.872 | — |
+   | Not about food (10) | ≤ 0.514 | ≤ 8.34 |
+   | Food, absent from corpus (3) | 0.691 – 0.728 | — |
 
-   A threshold pressed against a group boundary would be the signature of
-   overfitting; the script reports the gap on each side so that claim can be
-   verified rather than asserted.
+   The cosine threshold of 0.57 sits in the empty band between the first two
+   groups: **+0.056 above the loudest non-food question, +0.079 below the
+   quietest answerable one**. A threshold pressed against a group boundary
+   would be the signature of overfitting; this one is not, and the script
+   exits non-zero if that ever stops being true.
 
-   Food questions about *absent* dishes score inside the answerable range, so
-   the gate cannot separate them — which is why its refusal reason is
-   `out_of_domain`, not `out_of_corpus` (§4 stage 5).
+   Note the third row: food questions about dishes the corpus lacks score
+   *inside* the answerable range, so no threshold can separate them — which
+   is why the gate's refusal reason is `out_of_domain`, and dish-level
+   absence is decided by the model instead (§4 stage 5).
 2. **Constraint parser:** regex + vocabulary, English only. Runs only when
    the safety gate did *not* fire (§4 stage 2).
    - Time: "under/within/in/less than/at most/no more than N minutes|hours",

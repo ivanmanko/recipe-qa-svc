@@ -1,0 +1,41 @@
+# Questions used ONLY to choose the relevance thresholds (SPEC §7.1).
+#
+# Deliberately disjoint from golden_set.yaml: if the same questions both set a
+# parameter and measure it, the pass rate confirms the choice instead of
+# testing it. Keeping these separate makes the golden set held-out data for
+# the two thresholds.
+#
+# Nothing here is asserted — `tune_thresholds.py` only prints scores, and the
+# thresholds are chosen by hand from the separation it reports.
+
+answerable:
+  - How do I make tomato basil soup?
+  - What goes into rum balls?
+  - Show me how to bake a rhubarb pie.
+  - I want something sweet with apples.
+  - A warming bowl of soup for a cold evening.
+  - Something light with zucchini.
+  - Which pasta dish uses bacon?
+  - A dessert made with rice and milk.
+  - What can I cook with lentils and vegetables?
+  - An Italian pasta recipe with eggs and cheese.
+
+not_about_food:
+  - How do I fix a flat bicycle tyre?
+  - What is the best opening in chess?
+  - Explain how TCP congestion control works.
+  - Who wrote the novel Anna Karenina?
+  - What is the weather forecast for tomorrow?
+  - How do I renew a passport?
+  - Write a Python function that sorts a list.
+  - What is the population of Argentina?
+  - Recommend a good film about space travel.
+  - How much does a violin cost?
+
+# Food questions about dishes the corpus does not hold. Listed to demonstrate
+# why the gate cannot use score to detect them (they land inside the
+# answerable range), not to tune anything.
+absent_dishes:
+  - How do I make okonomiyaki?
+  - What is the recipe for beef wellington?
+  - How do I prepare ceviche?
