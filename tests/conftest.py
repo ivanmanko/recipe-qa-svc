@@ -8,6 +8,7 @@ from recipe_qa.config import Settings
 from recipe_qa.llm import Completion
 from recipe_qa.models import Recipe
 from recipe_qa.pipeline import Pipeline
+from recipe_qa.rate_limit import SlidingWindowLimiter
 from recipe_qa.retrieval import RecipeIndex
 
 
@@ -81,4 +82,5 @@ def build_client(
     asyncio.run(index.build())
     app = create_app()
     app.state.pipeline = Pipeline(index=index, llm=llm, settings=settings)
+    app.state.limiter = SlidingWindowLimiter(settings.rate_limit_per_minute)
     return TestClient(app), llm

@@ -166,7 +166,10 @@ class Pipeline:
         for _attempt in range(2):
             try:
                 completion = await self._llm.complete(
-                    messages, response_format=fmt, temperature=0
+                    messages,
+                    response_format=fmt,
+                    temperature=0,
+                    max_tokens=self._settings.max_output_tokens,
                 )
                 parsed = generation.parse_answer(completion.content)
                 log["prompt_tokens"] = completion.prompt_tokens

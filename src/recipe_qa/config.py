@@ -53,6 +53,13 @@ class Settings(BaseSettings):
     # and ran its evals against the outgoing container.
     git_sha: str = "unknown"
 
+    # Bounds a runaway generation's cost and latency (SPEC §7.14). Measured
+    # output is 391 tokens mean / 801 max, so this does not truncate real
+    # answers.
+    max_output_tokens: int = 1024
+    # Per-IP sliding window on POST /ask (SPEC §7.15); 0 disables it.
+    rate_limit_per_minute: int = 20
+
     corpus_path: str = "data/corpus.json"
     static_dir: str = "frontend/dist"
     max_question_length: int = 500

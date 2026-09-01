@@ -109,12 +109,20 @@ class TestAskIsLimited:
         assert client.get("/recipes/soup").status_code == 200
 
     def test_disabled_when_limit_is_zero(self):
-        client, _ = build_client(CORPUS, rate_limit_per_minute=0)
+        # Thresholds raised so the question is refused by the gate: this test
+        # is about the limiter, and must not depend on the mocked LLM.
+        client, llm = build_client(
+            CORPUS,
+            rate_limit_per_minute=0,
+            vector_score_threshold=999.0,
+            bm25_score_threshold=999.0,
+        )
         for _ in range(5):
             response = client.post(
                 "/ask", json={"question": "What is the capital of France?"}
             )
             assert response.status_code == 200
+        assert llm.calls == []
 
 
 class TestGenerationIsBounded:

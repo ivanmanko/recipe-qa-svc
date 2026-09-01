@@ -3,7 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.staticfiles import StaticFiles
 
 from recipe_qa.config import get_settings
@@ -11,6 +11,7 @@ from recipe_qa.embedder import get_embedder
 from recipe_qa.llm import OpenAILLMClient
 from recipe_qa.models import Recipe
 from recipe_qa.pipeline import GenerationUnavailable, Pipeline
+from recipe_qa.rate_limit import SlidingWindowLimiter
 from recipe_qa.retrieval import RecipeIndex
 from recipe_qa.schemas import AskRequest, AskResponse, RecipeDetail
 
@@ -38,6 +39,8 @@ async def _lifespan(app: FastAPI):
         app.state.pipeline = Pipeline(
             index=index, llm=OpenAILLMClient(settings), settings=settings
         )
+    if getattr(app.state, "limiter", None) is None:
+        app.state.limiter = SlidingWindowLimiter(get_settings().rate_limit_per_minute)
     yield
 
 
@@ -70,7 +73,19 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/ask", response_model=AskResponse)
-    async def ask(request: AskRequest, response: Response) -> AskResponse:
+    async def ask(
+        request: AskRequest, response: Response, http_request: Request
+    ) -> AskResponse:
+        # Only /ask is limited: it is the endpoint backed by a paid key.
+        # /health must never be throttled — it is the deploy probe.
+        client = http_request.client.host if http_request.client else "unknown"
+        decision = app.state.limiter.check(client)
+        if not decision.allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="rate_limited",
+                headers={"Retry-After": str(decision.retry_after)},
+            )
         try:
             result = await app.state.pipeline.ask(request.question)
         except GenerationUnavailable:
