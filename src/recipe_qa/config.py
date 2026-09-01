@@ -20,9 +20,12 @@ class Settings(BaseSettings):
     # Retrieval — values mirrored in SPEC §7; change them there in the same commit.
     retrieval_top_k: int = 5
     rrf_k: int = 60
-    # RRF-fused score of the best candidate below this => out_of_corpus refusal
-    # without an LLM call. Tuned on the golden set (SPEC §7.1).
-    relevance_threshold: float = 0.0
+    # Relevance gate (SPEC §7.1): the question is answerable only if the best
+    # eligible candidate clears at least one RAW-signal threshold. RRF-fused
+    # scores are rank-based and identical in scale for any query, so they
+    # cannot detect out-of-corpus; raw cosine / BM25 can. Tuned on golden set.
+    vector_score_threshold: float = 0.0
+    bm25_score_threshold: float = 0.0
 
     corpus_path: str = "data/corpus.json"
     max_question_length: int = 500

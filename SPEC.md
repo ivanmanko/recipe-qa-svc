@@ -171,10 +171,14 @@ satisfy the constraints — the harness asserts this.
 
 Everything a developer would otherwise decide silently in code:
 
-1. **Relevance threshold θ:** applied to the RRF-fused score of the best
-   candidate. The initial value is tuned on the golden set before submission
-   and recorded here: `θ = TBD` *(updated in the tuning commit; the value
-   lives in `config.py`, this line mirrors it)*.
+1. **Relevance gate:** the question is answerable only if the best eligible
+   candidate clears at least one **raw-signal** threshold: embedding cosine
+   ≥ `vector_score_threshold` OR BM25 ≥ `bm25_score_threshold`. RRF-fused
+   scores are deliberately *not* used here: they are rank-based, so their
+   scale is identical for every query and cannot signal out-of-corpus.
+   Values are tuned on the golden set before submission and recorded here:
+   `vector = TBD`, `bm25 = TBD` *(updated in the tuning commit; the values
+   live in `config.py`, this line mirrors them)*.
 2. **Constraint parser:** regex + vocabulary, English only.
    - Time: "under/in/within/less than N minutes|hours", "N-minute";
      "quick"/"fast" map to `max_time_minutes = 30`.

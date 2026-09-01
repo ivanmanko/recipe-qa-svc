@@ -143,10 +143,18 @@ class TestRetrieve:
 
     @pytest.mark.asyncio
     async def test_threshold_blocks_weak_matches(self):
-        index = await build_index(relevance_threshold=999.0)
+        index = await build_index(vector_score_threshold=999.0, bm25_score_threshold=999.0)
         result = await index.retrieve("how do I make carbonara", Constraints())
         assert result.candidates  # candidates are still reported for logging
         assert not result.threshold_passed
+
+    @pytest.mark.asyncio
+    async def test_strong_lexical_signal_passes_gate_alone(self):
+        # cosine gate unreachable, BM25 gate reachable: an exact dish-name hit
+        # must still pass (either raw signal suffices, SPEC §7.1)
+        index = await build_index(vector_score_threshold=999.0, bm25_score_threshold=0.1)
+        result = await index.retrieve("how do I make carbonara", Constraints())
+        assert result.threshold_passed
 
     @pytest.mark.asyncio
     async def test_top_k_limit(self):
