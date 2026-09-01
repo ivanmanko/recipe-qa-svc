@@ -9,6 +9,7 @@ import logging
 import time
 import uuid
 
+from recipe_qa import generation
 from recipe_qa.config import Settings
 from recipe_qa.constraints import Constraints, extract_constraints
 from recipe_qa.llm import LLMClient
@@ -134,4 +135,34 @@ class Pipeline:
     async def _generate(
         self, request_id: str, question: str, result: RetrievalResult, log: dict
     ) -> AskResponse:
-        raise GenerationUnavailable("generation stage not implemented yet")
+        recipes = [c.recipe for c in result.candidates]
+        messages = generation.build_messages(question, recipes)
+        try:
+            raw = await self._llm.complete(
+                messages, response_format=generation.response_format(), temperature=0
+            )
+            parsed = generation.parse_answer(raw)
+        except Exception as exc:
+            log["generation_error"] = repr(exc)
+            raise GenerationUnavailable(str(exc)) from exc
+
+        if parsed.refused:
+            reason = RefusalReason(parsed.refusal_reason or "out_of_corpus")
+            return self._refusal(request_id, reason)
+
+        # Grounding guard (SPEC §4 stage 7): citations restricted to what was
+        # actually retrieved; a non-refusal without valid citations is not
+        # grounded and becomes an out_of_corpus refusal.
+        retrieved = {r.id: r for r in recipes}
+        cited = [retrieved[i] for i in dict.fromkeys(parsed.citation_ids) if i in retrieved]
+        log["dropped_citation_ids"] = [i for i in parsed.citation_ids if i not in retrieved]
+        if not cited or not parsed.answer:
+            return self._refusal(request_id, RefusalReason.out_of_corpus)
+
+        return AskResponse(
+            answer=parsed.answer,
+            citations=[Citation(title=r.title, url=r.url, recipe_id=r.id) for r in cited],
+            refused=False,
+            refusal_reason=None,
+            request_id=request_id,
+        )
