@@ -76,7 +76,15 @@ uv sync && (cd frontend && npm ci && npm run build) && uv run uvicorn recipe_qa.
 ```
 
 Open http://localhost:8000 for the UI; the API is on the same origin
-(`POST /ask`, `GET /health`, OpenAPI at `/docs`).
+(`POST /ask`, `GET /recipes/{id}`, `GET /health`, OpenAPI at `/docs`).
+
+**Licence.** The corpus is the Wikibooks Cookbook, licensed
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (confirmed via
+the MediaWiki `rightsinfo` API). Because the UI renders recipe text on its own
+page rather than only linking out, every expanded recipe carries attribution:
+the source title, a link to the original page, and the licence name. That is
+also why `Citation.url` is a required field rather than a convenience —
+attribution is impossible without it.
 
 **Rebuilding the corpus** from scratch (only needs the script — the committed
 `data/corpus.json` is the output of exactly this):
@@ -329,7 +337,7 @@ Deliberately not built, with what closing each gap would take:
 | **Multi-language** | Corpus, prompts, and the constraint parser are English-only (declared in SPEC §7.8). Non-English questions typically refuse as out-of-domain. |
 | **p95 < 4 s latency target** | Missed and documented above, with the optimization order. |
 | **Load/soak testing** | Never run under concurrency. The service is stateless so it scales horizontally, and query embedding now runs on thread-safe ONNX Runtime rather than behind a process-wide lock — but that is reasoning, not a measurement, and concurrent throughput is the first thing I would actually test. |
-| **Frontend tests** | The UI is ~120 lines of TypeScript verified by hand across all three states. The API contract it depends on is covered by backend tests. |
+| **Frontend tests** | The UI is ~230 lines of TypeScript verified by hand across its states, both themes and a 375px viewport. The API it depends on is covered by backend tests; the untested part is rendering, so a component or Playwright suite is what would close this. |
 
 This is not production-grade in the sense of a service with real users behind
 it: no auth, no rate limiting, no alerting on the logs it emits, single

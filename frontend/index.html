@@ -3,30 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Recipe Q&A</title>
+    <title>Recipe Q&amp;A</title>
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main>
-      <h1>Recipe Q&amp;A</h1>
-      <p class="hint">
-        Ask about the recipes in this corpus, e.g. “What's a vegetarian dinner
-        I can make in under 30 minutes?”
-      </p>
-      <form id="ask-form">
-        <input
-          id="question"
-          name="question"
-          type="text"
-          maxlength="500"
-          placeholder="How do I make carbonara?"
-          autocomplete="off"
-          required
-        />
-        <button id="submit" type="submit">Ask</button>
+    <div class="page">
+      <header class="head">
+        <h1>Recipe Q&amp;A</h1>
+        <p class="lede">
+          Ask about 55 recipes from the Wikibooks Cookbook. Every answer cites the
+          recipes it came from, and questions this corpus can&rsquo;t answer are
+          refused rather than guessed at.
+        </p>
+      </header>
+
+      <form id="ask-form" autocomplete="off">
+        <div class="field">
+          <input
+            id="question"
+            name="question"
+            type="text"
+            maxlength="500"
+            placeholder="How do I make carbonara?"
+            aria-label="Your question"
+            required
+          />
+          <button id="submit" type="submit">Ask</button>
+        </div>
       </form>
-      <section id="result" hidden></section>
-    </main>
+
+      <section class="examples" aria-label="Example questions">
+        <p class="examples-hint">Try one &mdash; the last two are meant to be refused:</p>
+        <div class="chips" id="examples"></div>
+      </section>
+
+      <section id="result" class="result" hidden aria-live="polite"></section>
+
+      <footer class="foot">
+        Recipes from the
+        <a href="https://en.wikibooks.org/wiki/Cookbook" target="_blank" rel="noopener">Wikibooks Cookbook</a>,
+        used under
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.
+      </footer>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
