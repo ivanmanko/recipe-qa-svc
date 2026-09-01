@@ -44,6 +44,10 @@ jobs:
         env:
           PROD_URL: ${{ secrets.PROD_URL }}
         run: |
+          if [ -z "$PROD_URL" ]; then
+            echo "::warning::PROD_URL secret not set — deploy verification skipped"
+            exit 0
+          fi
           for i in $(seq 1 90); do
             if curl -fsS "$PROD_URL/health"; then exit 0; fi
             echo "waiting for deployment ($i/90)..."
@@ -54,4 +58,9 @@ jobs:
       - name: Run eval harness against production
         env:
           PROD_URL: ${{ secrets.PROD_URL }}
-        run: uv run python evals/run_evals.py --target "$PROD_URL"
+        run: |
+          if [ -z "$PROD_URL" ]; then
+            echo "::warning::PROD_URL secret not set — prod evals skipped"
+            exit 0
+          fi
+          uv run python evals/run_evals.py --target "$PROD_URL"
